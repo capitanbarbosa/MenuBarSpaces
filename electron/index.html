@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Overlay Menu Bar</title>
+    <style>
+      body {
+        margin: 0;
+        background: #d32f2f;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #menu {
+        display: flex;
+        align-items: center;
+        height: 30px;
+        padding: 0 10px;
+        background: #d32f2f;
+      }
+      #launcher {
+        background: #222;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 18px;
+        width: 36px;
+        height: 24px;
+        margin-right: 10px;
+        cursor: pointer;
+      }
+      #panel {
+        display: none;
+        position: absolute;
+        top: 30px;
+        left: 10px;
+        width: 300px;
+        background: #23272e;
+        border-radius: 10px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        padding: 20px 0;
+        z-index: 100;
+      }
+      .panel-btn {
+        display: block;
+        width: 90%;
+        margin: 10px auto;
+        padding: 12px 0;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: bold;
+        color: #fff;
+        background: #1976d2;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .panel-btn.settings {
+        background: #388e3c;
+      }
+      .panel-btn.about {
+        background: #fbc02d;
+        color: #222;
+      }
+      .panel-btn.quit {
+        background: #c62828;
+      }
+      .panel-btn:hover {
+        filter: brightness(1.1);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="menu">
+      <button id="launcher">≡</button>
+    </div>
+    <div id="panel">
+      <button class="panel-btn">Launch App</button>
+      <button class="panel-btn settings">Settings</button>
+      <button class="panel-btn about">About</button>
+      <button class="panel-btn quit">Quit</button>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const launcher = document.getElementById("launcher");
+        const panel = document.getElementById("panel");
+        if (!launcher || !panel) {
+          console.error("Launcher button or panel not found!");
+          return;
+        }
+        launcher.addEventListener("click", () => {
+          panel.style.display =
+            panel.style.display === "block" ? "none" : "block";
+        });
+        document.querySelector(".panel-btn.quit").onclick = () => {
+          window.close();
+        };
+        document.addEventListener("mousedown", (e) => {
+          if (
+            panel.style.display === "block" &&
+            !panel.contains(e.target) &&
+            e.target !== launcher
+          ) {
+            panel.style.display = "none";
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
