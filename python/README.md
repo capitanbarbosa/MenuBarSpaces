@@ -38,9 +38,7 @@ A custom, always-on-top overlay menu bar for macOS, written in Python using PyOb
    - Press `F9` (or `fn+F9` on MacBooks, unless you change keyboard settings)
 
 ## Notes
-- If the F9 hotkey does not work, ensure `pynput` is installed and your app has accessibility permissions (System Settings → Privacy & Security → Accessibility).
-- To use F9 without holding `fn`, enable "Use F1, F2, etc. keys as standard function keys" in System Settings → Keyboard.
-- For advanced key remapping, use a tool like Karabiner-Elements.
+
 
 ## Uninstall
 To remove the virtual environment and dependencies:

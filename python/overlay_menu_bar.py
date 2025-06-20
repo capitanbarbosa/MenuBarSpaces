@@ -177,6 +177,31 @@ class OverlayMenuBar:
         self.window.contentView().addSubview_(close_button)
         self.close_button = close_button
 
+        # Add WhatsApp button next to the left menu button
+        whatsapp_button_width = 36
+        whatsapp_button_height = menu_bar_height - 4
+        whatsapp_button_x = button_x + button_width + 8  # Place to the right of the menu button
+        whatsapp_button_y = 4
+        whatsapp_button = NSButton.alloc().initWithFrame_(
+            NSMakeRect(whatsapp_button_x, whatsapp_button_y, whatsapp_button_width, whatsapp_button_height))
+        whatsapp_button.setTitle_("🟢")  # Use WhatsApp emoji or set custom icon if desired
+        whatsapp_button.setBezelStyle_(4)
+        whatsapp_button.setAction_("toggleWhatsApp:")
+        whatsapp_button.setTarget_(self)
+        whatsapp_button.setButtonType_(0)
+        whatsapp_button.setBordered_(False)
+        whatsapp_button.setWantsLayer_(True)
+        whatsapp_button.layer().setBackgroundColor_(button_bg.CGColor())
+        whatsapp_button.layer().setCornerRadius_(10)
+        attr_whatsapp = NSAttributedString.alloc().initWithString_attributes_(
+            "🟢",
+            NSDictionary.dictionaryWithObject_forKey_(
+                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.9, 0.3, 1.0), NSForegroundColorAttributeName)
+        )
+        whatsapp_button.setAttributedTitle_(attr_whatsapp)
+        self.whatsapp_button = whatsapp_button
+        self.window.contentView().addSubview_(whatsapp_button)
+
         self.window.orderFrontRegardless()
         self.hotkey_listener_thread = None
         self.setup_hotkey_listener()
@@ -255,6 +280,38 @@ class OverlayMenuBar:
         print(f"Clicked: {sender.title()}")
         if sender.title() == "Quit":
             NSApplication.sharedApplication().terminate_(None)
+
+    # Add this method to OverlayMenuBar
+    def toggleWhatsApp_(self, sender):
+        """
+        Toggle the WhatsApp Edge PWA window visibility using AppleScript.
+        If visible, minimize it. If minimized, restore and focus it.
+        """
+        import subprocess
+        script = '''
+        tell application "Microsoft Edge"
+            set winList to every window
+            set found to false
+            repeat with w in winList
+                if name of w contains "WhatsApp" then
+                    set found to true
+                    if miniaturized of w is true then
+                        set miniaturized of w to false
+                        set index of w to 1
+                        set visible of w to true
+                        activate
+                    else
+                        set miniaturized of w to true
+                    end if
+                    exit repeat
+                end if
+            end repeat
+        end tell
+        '''
+        try:
+            subprocess.run(["osascript", "-e", script], check=True)
+        except Exception as e:
+            print(f"[WhatsApp Toggle] AppleScript error: {e}")
 
 
 if __name__ == "__main__":
