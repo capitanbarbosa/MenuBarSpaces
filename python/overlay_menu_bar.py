@@ -1,6 +1,9 @@
-# ...existing code from overlay_menu_bar.py...
 import sys
 import threading
+try:
+    from ApplicationServices import AXIsProcessTrustedWithOptions
+except ImportError:
+    AXIsProcessTrustedWithOptions = None
 from Cocoa import NSApplication, NSWindow, NSWindowStyleMaskBorderless, NSBackingStoreBuffered, NSRect, NSScreen, NSColor, NSStatusWindowLevel, NSButton, NSPanel, NSView, NSMakeRect, NSFont, NSAttributedString, NSDictionary, NSForegroundColorAttributeName, NSStatusBar, NSVariableStatusItemLength, NSImage, NSAnimationContext
 from PyObjCTools import AppHelper
 
@@ -9,6 +12,25 @@ try:
     from pynput import keyboard
 except ImportError:
     keyboard = None  # Will show warning if not installed
+
+
+def check_accessibility_permissions():
+    """Checks for macOS accessibility permissions and provides guidance if not enabled."""
+    if sys.platform == 'darwin' and AXIsProcessTrustedWithOptions is not None:
+        if not AXIsProcessTrustedWithOptions(None):
+            print("="*80)
+            print("!! PERMISSION REQUIRED FOR HOTKEYS !!")
+            print("This app needs permissions to listen for global hotkeys (like F9).")
+            print("Please grant 'Accessibility' and 'Input Monitoring' permissions to your terminal app.")
+            print("\nTo do so:")
+            print("1. Open System Settings > Privacy & Security > Accessibility")
+            print("2. Open System Settings > Privacy & Security > Input Monitoring")
+            print("\nIn both sections, click '+' and add your terminal application if it's not listed, then ensure the toggle is ON.")
+            print("The app running this script needs to be added (e.g., Terminal, iTerm2, or VSCode's/Cursor's terminal).")
+            print("You will likely need to restart the terminal or the script after granting permissions.")
+            print("="*80)
+            return False
+    return True
 
 
 class OverlayMenuBar:
@@ -207,6 +229,10 @@ class OverlayMenuBar:
         self.setup_hotkey_listener()
 
     def setup_hotkey_listener(self):
+        if not check_accessibility_permissions():
+            print("\n[Warning] Permissions not granted. The F9 hotkey will be disabled.")
+            return
+
         if keyboard is None:
             print("[Warning] pynput not installed. F9 hotkey will not work.")
             return
@@ -249,29 +275,22 @@ class OverlayMenuBar:
             self.slideInAndShow_()
 
     def slideInAndShow_(self):
-        # Animate window sliding in from right
-        frame = self.window.frame()
-        screen = NSScreen.mainScreen().frame()
-        start_x = screen.size.width
-        end_x = 0
-        self.window.setFrameOrigin_((start_x, frame.origin.y))
+        # Animate window fading in
+        self.window.setAlphaValue_(0.0)
         self.window.orderFrontRegardless()
         NSAnimationContext.beginGrouping()
-        NSAnimationContext.currentContext().setDuration_(0.25)
-        self.window.animator().setFrameOrigin_((end_x, frame.origin.y))
+        NSAnimationContext.currentContext().setDuration_(0.2)
+        self.window.animator().setAlphaValue_(1.0)
         NSAnimationContext.endGrouping()
 
     def slideOutAndHide_(self, sender):
-        # Animate window sliding out to right
-        frame = self.window.frame()
-        screen = NSScreen.mainScreen().frame()
-        end_x = screen.size.width
+        # Animate window fading out
         NSAnimationContext.beginGrouping()
-        NSAnimationContext.currentContext().setDuration_(0.25)
-        self.window.animator().setFrameOrigin_((end_x, frame.origin.y))
+        NSAnimationContext.currentContext().setDuration_(0.2)
+        self.window.animator().setAlphaValue_(0.0)
         NSAnimationContext.endGrouping()
-        # Hide window after animation completes using performSelector
-        self.window.performSelector_withObject_afterDelay_("orderOut:", None, 0.3)
+        # Hide window after animation completes
+        self.window.performSelector_withObject_afterDelay_("orderOut:", None, 0.25)
 
     def panelOptionClicked_(self, sender):
         # Placeholder: print which option was clicked
