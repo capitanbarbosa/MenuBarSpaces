@@ -270,10 +270,8 @@ class OverlayMenuBar:
         NSAnimationContext.currentContext().setDuration_(0.25)
         self.window.animator().setFrameOrigin_((end_x, frame.origin.y))
         NSAnimationContext.endGrouping()
-        # Hide after animation
-        import time
-        from threading import Timer
-        Timer(0.26, lambda: self.window.orderOut_(None)).start()
+        # Hide window after animation completes using performSelector
+        self.window.performSelector_withObject_afterDelay_("orderOut:", None, 0.3)
 
     def panelOptionClicked_(self, sender):
         # Placeholder: print which option was clicked
