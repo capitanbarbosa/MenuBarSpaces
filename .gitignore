@@ -1,3 +1,4 @@
 # In python/.gitignore or the root .gitignore
 .venv/
+venv/
 node_modules/
