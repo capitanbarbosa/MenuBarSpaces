@@ -283,35 +283,29 @@ class OverlayMenuBar:
 
     # Add this method to OverlayMenuBar
     def toggleWhatsApp_(self, sender):
-        """
-        Toggle the WhatsApp Edge PWA window visibility using AppleScript.
-        If visible, minimize it. If minimized, restore and focus it.
-        """
         import subprocess
+        print("[WhatsApp Toggle] Invoked toggleWhatsApp_")
         script = '''
         tell application "Microsoft Edge"
             set winList to every window
-            set found to false
             repeat with w in winList
-                if name of w contains "WhatsApp" then
-                    set found to true
-                    if miniaturized of w is true then
-                        set miniaturized of w to false
-                        set index of w to 1
-                        set visible of w to true
-                        activate
-                    else
-                        set miniaturized of w to true
-                    end if
+                if (name of w is "") then
+                    set index of w to 1
+                    activate
+                    display notification "WhatsApp window focused" with title "Overlay Menu Bar"
                     exit repeat
                 end if
             end repeat
         end tell
         '''
+        print("[WhatsApp Toggle] Running AppleScript:\n" + script)
         try:
-            subprocess.run(["osascript", "-e", script], check=True)
+            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            print(f"[WhatsApp Toggle] AppleScript output: {result.stdout}")
+            if result.stderr:
+                print(f"[WhatsApp Toggle] AppleScript error output: {result.stderr}")
         except Exception as e:
-            print(f"[WhatsApp Toggle] AppleScript error: {e}")
+            print(f"[WhatsApp Toggle] Exception: {e}")
 
 
 if __name__ == "__main__":
