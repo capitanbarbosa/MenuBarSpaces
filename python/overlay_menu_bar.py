@@ -1,7 +1,14 @@
 # ...existing code from overlay_menu_bar.py...
 import sys
+import threading
 from Cocoa import NSApplication, NSWindow, NSWindowStyleMaskBorderless, NSBackingStoreBuffered, NSRect, NSScreen, NSColor, NSStatusWindowLevel, NSButton, NSPanel, NSView, NSMakeRect, NSFont, NSAttributedString, NSDictionary, NSForegroundColorAttributeName, NSStatusBar, NSVariableStatusItemLength, NSImage, NSAnimationContext
 from PyObjCTools import AppHelper
+
+# Add this import for global hotkey
+try:
+    from pynput import keyboard
+except ImportError:
+    keyboard = None  # Will show warning if not installed
 
 
 class OverlayMenuBar:
@@ -171,6 +178,31 @@ class OverlayMenuBar:
         self.close_button = close_button
 
         self.window.orderFrontRegardless()
+        self.hotkey_listener_thread = None
+        self.setup_hotkey_listener()
+
+    def setup_hotkey_listener(self):
+        if keyboard is None:
+            print("[Warning] pynput not installed. F9 hotkey will not work.")
+            return
+
+        def on_press(key):
+            try:
+                if key == keyboard.Key.f9:
+                    # Toggle the whole overlay menu bar window
+                    if self.window.isVisible():
+                        self.window.orderOut_(None)
+                        # Also hide the panel if open
+                        self.panel.orderOut_(None)
+                    else:
+                        self.window.orderFrontRegardless()
+            except Exception as e:
+                print(f"Hotkey error: {e}")
+
+        listener = keyboard.Listener(on_press=on_press)
+        t = threading.Thread(target=listener.start, daemon=True)
+        t.start()
+        self.hotkey_listener_thread = t
 
     def togglePanel_(self, sender):
         # Always position the panel below the button and toggle reliably
