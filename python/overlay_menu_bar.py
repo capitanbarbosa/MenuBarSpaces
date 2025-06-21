@@ -365,6 +365,8 @@ class OverlayMenuBar:
             print("[Warning] pynput not installed. F9 hotkey will not work.")
             return
 
+        self._shift_pressed = False
+
         def on_press(key):
             try:
                 if key == keyboard.Key.f9:
@@ -375,10 +377,23 @@ class OverlayMenuBar:
                         self.panel.orderOut_(None)
                     else:
                         self.window.orderFrontRegardless()
+                elif key == keyboard.Key.shift and not self._shift_pressed:
+                    self._shift_pressed = True
+                    from PyObjCTools.AppHelper import callAfter
+                    callAfter(self.highlightWorkspaceButtonsBlue)
             except Exception as e:
                 print(f"Hotkey error: {e}")
 
-        listener = keyboard.Listener(on_press=on_press)
+        def on_release(key):
+            try:
+                if key == keyboard.Key.shift and self._shift_pressed:
+                    self._shift_pressed = False
+                    from PyObjCTools.AppHelper import callAfter
+                    callAfter(self.unhighlightWorkspaceButtons)
+            except Exception as e:
+                print(f"Hotkey error: {e}")
+
+        listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         t = threading.Thread(target=listener.start, daemon=True)
         t.start()
         self.hotkey_listener_thread = t
@@ -466,11 +481,71 @@ class OverlayMenuBar:
         except Exception as e:
             print(f"[WhatsApp/yabai] Error: {e}")
 
+    def is_whatsapp_minimized(self):
+        """Return True if WhatsApp Web window is minimized, False if not, None if not found."""
+        import subprocess
+        import json
+        try:
+            result = subprocess.run(
+                ["yabai", "-m", "query", "--windows"],
+                capture_output=True, text=True, check=True
+            )
+            windows = json.loads(result.stdout)
+            wa_windows = [w for w in windows if w.get("app") == "WhatsApp Web"]
+            if not wa_windows:
+                return None
+            return wa_windows[0].get("minimized", 0) == 1
+        except Exception as e:
+            print(f"[WhatsApp/yabai] Error checking minimized state: {e}")
+            return None
+
     def toggleWhatsAppComprehensive_(self, sender):
         """
-        Toggle WhatsApp Web window using yabai (unminimize and focus). AppleScript fallback removed.
+        Toggle WhatsApp Web window using yabai: minimize if visible, unminimize+focus if minimized.
         """
-        self.unminimize_and_focus_whatsapp()
+        import subprocess
+        import json
+        try:
+            # Query all windows
+            result = subprocess.run(
+                ["yabai", "-m", "query", "--windows"],
+                capture_output=True, text=True, check=True
+            )
+            windows = json.loads(result.stdout)
+            wa_windows = [w for w in windows if w.get("app") == "WhatsApp Web"]
+            if not wa_windows:
+                print("[WhatsApp/yabai] WhatsApp Web window not found.")
+                return
+            wa_id = wa_windows[0]["id"]
+            is_minimized = wa_windows[0].get("minimized", 0) == 1
+            if is_minimized:
+                # Unminimize and focus
+                subprocess.run(["yabai", "-m", "window", str(wa_id), "--toggle", "min"])
+                subprocess.run(["yabai", "-m", "window", "--focus", str(wa_id)])
+                print("[WhatsApp/yabai] WhatsApp Web window unminimized and focused.")
+            else:
+                # Minimize
+                subprocess.run(["yabai", "-m", "window", str(wa_id), "--toggle", "min"])
+                print("[WhatsApp/yabai] WhatsApp Web window minimized.")
+        except Exception as e:
+            print(f"[WhatsApp/yabai] Error: {e}")
+
+    def highlightWorkspaceButtonsBlue(self):
+        """Highlight all workspace buttons blue (for Shift key state)."""
+        from Cocoa import NSColor, NSForegroundColorAttributeName, NSAttributedString, NSDictionary
+        for i, button in enumerate(self.workspace_buttons):
+            workspace_name = self.workspace_names[i]
+            button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.20, 0.44, 0.86, 1.0).CGColor())  # blue
+            text_color = NSColor.whiteColor()
+            attr_title = NSAttributedString.alloc().initWithString_attributes_(
+                workspace_name,
+                NSDictionary.dictionaryWithObject_forKey_(text_color, NSForegroundColorAttributeName)
+            )
+            button.setAttributedTitle_(attr_title)
+
+    def unhighlightWorkspaceButtons(self):
+        """Restore workspace buttons to normal state (green/gray)."""
+        self.updateWorkspaceButtons()
 
     def updateWorkspaceButtons(self):
         """Update the appearance of workspace buttons to reflect current state (section style, green active, gray inactive)."""
