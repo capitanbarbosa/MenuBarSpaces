@@ -206,27 +206,30 @@ class OverlayMenuBar:
         self.whatsapp_button = whatsapp_button
         self.window.contentView().addSubview_(whatsapp_button)
 
-        # Create individual workspace buttons directly in the menu bar (XFCE style)
-        workspace_button_width = 28
-        workspace_button_height = menu_bar_height - 2  # Reduced padding for maximum compactness
+        # Create individual workspace buttons directly in the menu bar (section style)
+        workspace_button_width = 64  # Wider for section look
+        workspace_button_height = menu_bar_height - 2
         workspace_start_x = whatsapp_button_x + whatsapp_button_width + 8
+        section_gap = 0  # No gap for section/segmented look
         
         for i in range(self.workspace_count):
-            workspace_x = workspace_start_x + i * (workspace_button_width + 4)
+            workspace_x = workspace_start_x + i * (workspace_button_width + section_gap)
             workspace_button = NSButton.alloc().initWithFrame_(
                 NSMakeRect(workspace_x, 1, workspace_button_width, workspace_button_height))
-            
             workspace_button.setTitle_(self.workspace_names[i])
-            workspace_button.setBezelStyle_(4)
+            workspace_button.setBezelStyle_(2)  # NSBezelStyleRegularSquare (flat/tool style)
             workspace_button.setAction_("switchToWorkspace:")
             workspace_button.setTarget_(self)
             workspace_button.setButtonType_(0)
             workspace_button.setBordered_(False)
             workspace_button.setWantsLayer_(True)
-            workspace_button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
-            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(10))  # Smaller font for maximum compactness
-            workspace_button.setTag_(i + 1)  # Store workspace number
-            
+            workspace_button.layer().setCornerRadius_(0)  # No corner radius for section look
+            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(14))  # Larger font for section look
+            workspace_button.setTag_(i + 1)
+            # Add more horizontal padding if available
+            if hasattr(workspace_button, 'setContentInsets_'):
+                from Cocoa import NSEdgeInsetsMake
+                workspace_button.setContentInsets_(NSEdgeInsetsMake(4, 12, 4, 12))
             self.workspace_buttons.append(workspace_button)
             self.window.contentView().addSubview_(workspace_button)
 
@@ -545,27 +548,20 @@ class OverlayMenuBar:
                 print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback failed: {ultimate_e}")
 
     def updateWorkspaceButtons(self):
-        """Update the appearance of workspace buttons to reflect current state."""
+        """Update the appearance of workspace buttons to reflect current state (section style, green active, gray inactive)."""
         for i, button in enumerate(self.workspace_buttons):
             workspace_num = i + 1
             workspace_name = self.workspace_names[i]
             if workspace_num == self.current_workspace:
-                # Current workspace - highlighted with blue background
-                button.layer().setBackgroundColor_(
-                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.2, 0.6, 0.9, 1.0).CGColor())
+                # Active workspace - green background (as in screenshot)
+                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.298, 0.686, 0.314, 1.0).CGColor())  # #4CAF50
                 text_color = NSColor.whiteColor()
-                # Add a subtle border for the active workspace
-                button.layer().setBorderWidth_(1.0)
-                button.layer().setBorderColor_(
-                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.4, 0.7, 1.0, 1.0).CGColor())
+                button.layer().setBorderWidth_(0)
             else:
-                # Inactive workspace - darker background
-                button.layer().setBackgroundColor_(
-                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.18, 0.20, 0.24, 1.0).CGColor())
+                # Inactive workspace - dark gray background
+                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.137, 0.152, 0.184, 1.0).CGColor())  # #23272F
                 text_color = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.7, 0.7, 0.7, 1.0)
-                button.layer().setBorderWidth_(0.5)
-                button.layer().setBorderColor_(
-                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.3, 0.3, 1.0).CGColor())
+                button.layer().setBorderWidth_(0)
             # Set button title color
             attr_title = NSAttributedString.alloc().initWithString_attributes_(
                 workspace_name,
