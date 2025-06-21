@@ -122,6 +122,29 @@ class OverlayMenuBar:
         self.panel.setAlphaValue_(1.0)
         self.panel.orderOut_(None)
 
+        # Create pager panel (workspace switcher) - hidden by default
+        pager_panel_width = 200
+        pager_panel_height = 120
+        pager_panel_rect = NSMakeRect(
+            10, frame.size.height - menu_bar_height - pager_panel_height, pager_panel_width, pager_panel_height)
+        self.pager_panel = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+            pager_panel_rect,
+            NSWindowStyleMaskBorderless,
+            NSBackingStoreBuffered,
+            False
+        )
+        self.pager_panel.setLevel_(NSStatusWindowLevel)
+        self.pager_panel.setOpaque_(True)
+        self.pager_panel.setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(
+            0.13, 0.15, 0.18, 1.0))  # dark gray
+        self.pager_panel.setAlphaValue_(1.0)
+        self.pager_panel.orderOut_(None)
+
+        # Initialize workspace info
+        self.workspace_count = 0
+        self.current_workspace = 0
+        self.updateWorkspaceInfo()
+
         # Add placeholder options to the panel with improved styling
         option_titles = ["Launch App", "Settings", "About", "Quit"]
         option_height = 40
@@ -174,6 +197,56 @@ class OverlayMenuBar:
         self.status_item.button().setTarget_(self)
         self.status_item.button().setAction_("toggleOverlay:")
 
+        # Add WhatsApp button next to the left menu button
+        whatsapp_button_width = 36
+        whatsapp_button_height = menu_bar_height - 4
+        whatsapp_button_x = button_x + button_width + 8  # Place to the right of the menu button
+        whatsapp_button_y = 4
+        whatsapp_button = NSButton.alloc().initWithFrame_(
+            NSMakeRect(whatsapp_button_x, whatsapp_button_y, whatsapp_button_width, whatsapp_button_height))
+        whatsapp_button.setTitle_("🟢")  # Use WhatsApp emoji or set custom icon if desired
+        whatsapp_button.setBezelStyle_(4)
+        whatsapp_button.setAction_("toggleWhatsAppComprehensive:")
+        whatsapp_button.setTarget_(self)
+        whatsapp_button.setButtonType_(0)
+        whatsapp_button.setBordered_(False)
+        whatsapp_button.setWantsLayer_(True)
+        whatsapp_button.layer().setBackgroundColor_(button_bg.CGColor())
+        whatsapp_button.layer().setCornerRadius_(10)
+        attr_whatsapp = NSAttributedString.alloc().initWithString_attributes_(
+            "🟢",
+            NSDictionary.dictionaryWithObject_forKey_(
+                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.9, 0.3, 1.0), NSForegroundColorAttributeName)
+        )
+        whatsapp_button.setAttributedTitle_(attr_whatsapp)
+        self.whatsapp_button = whatsapp_button
+        self.window.contentView().addSubview_(whatsapp_button)
+
+        # Add Pager button (workspace switcher) next to WhatsApp button
+        pager_button_width = 36
+        pager_button_height = menu_bar_height - 4
+        pager_button_x = whatsapp_button_x + whatsapp_button_width + 8  # Place to the right of WhatsApp button
+        pager_button_y = 4
+        pager_button = NSButton.alloc().initWithFrame_(
+            NSMakeRect(pager_button_x, pager_button_y, pager_button_width, pager_button_height))
+        pager_button.setTitle_("◢")  # Desktop/workspace icon
+        pager_button.setBezelStyle_(4)
+        pager_button.setAction_("togglePager:")
+        pager_button.setTarget_(self)
+        pager_button.setButtonType_(0)
+        pager_button.setBordered_(False)
+        pager_button.setWantsLayer_(True)
+        pager_button.layer().setBackgroundColor_(button_bg.CGColor())
+        pager_button.layer().setCornerRadius_(10)
+        attr_pager = NSAttributedString.alloc().initWithString_attributes_(
+            "◢",
+            NSDictionary.dictionaryWithObject_forKey_(
+                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.6, 0.8, 1.0, 1.0), NSForegroundColorAttributeName)
+        )
+        pager_button.setAttributedTitle_(attr_pager)
+        self.pager_button = pager_button
+        self.window.contentView().addSubview_(pager_button)
+
         # Add a right-edge toggle-off button to the overlay
         close_button_width = 32
         close_button_height = menu_bar_height - 8
@@ -199,31 +272,6 @@ class OverlayMenuBar:
         self.window.contentView().addSubview_(close_button)
         self.close_button = close_button
 
-        # Add WhatsApp button next to the left menu button
-        whatsapp_button_width = 36
-        whatsapp_button_height = menu_bar_height - 4
-        whatsapp_button_x = button_x + button_width + 8  # Place to the right of the menu button
-        whatsapp_button_y = 4
-        whatsapp_button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(whatsapp_button_x, whatsapp_button_y, whatsapp_button_width, whatsapp_button_height))
-        whatsapp_button.setTitle_("🟢")  # Use WhatsApp emoji or set custom icon if desired
-        whatsapp_button.setBezelStyle_(4)
-        whatsapp_button.setAction_("toggleWhatsApp:")
-        whatsapp_button.setTarget_(self)
-        whatsapp_button.setButtonType_(0)
-        whatsapp_button.setBordered_(False)
-        whatsapp_button.setWantsLayer_(True)
-        whatsapp_button.layer().setBackgroundColor_(button_bg.CGColor())
-        whatsapp_button.layer().setCornerRadius_(10)
-        attr_whatsapp = NSAttributedString.alloc().initWithString_attributes_(
-            "🟢",
-            NSDictionary.dictionaryWithObject_forKey_(
-                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.9, 0.3, 1.0), NSForegroundColorAttributeName)
-        )
-        whatsapp_button.setAttributedTitle_(attr_whatsapp)
-        self.whatsapp_button = whatsapp_button
-        self.window.contentView().addSubview_(whatsapp_button)
-
         self.window.orderFrontRegardless()
         self.hotkey_listener_thread = None
         self.setup_hotkey_listener()
@@ -245,6 +293,8 @@ class OverlayMenuBar:
                         self.window.orderOut_(None)
                         # Also hide the panel if open
                         self.panel.orderOut_(None)
+                        # Also hide the pager panel if open
+                        self.pager_panel.orderOut_(None)
                     else:
                         self.window.orderFrontRegardless()
             except Exception as e:
@@ -291,6 +341,9 @@ class OverlayMenuBar:
         NSAnimationContext.endGrouping()
         # Hide window after animation completes
         self.window.performSelector_withObject_afterDelay_("orderOut:", None, 0.25)
+        # Also hide panels
+        self.panel.orderOut_(None)
+        self.pager_panel.orderOut_(None)
 
     def panelOptionClicked_(self, sender):
         # Placeholder: print which option was clicked
@@ -302,20 +355,33 @@ class OverlayMenuBar:
     def toggleWhatsApp_(self, sender):
         import subprocess
         print("[WhatsApp Toggle] Invoked toggleWhatsApp_")
+        
+        # Enhanced AppleScript that handles minimized windows
         script = '''
-        tell application "Microsoft Edge"
-            set winList to every window
-            repeat with w in winList
-                if (name of w is "") then
-                    set index of w to 1
-                    activate
-                    display notification "WhatsApp window focused" with title "Overlay Menu Bar"
-                    exit repeat
+        tell application "System Events"
+            set waProc to first process whose name is "WhatsApp Web"
+            if waProc exists then
+                -- Check if the app is minimized (has no visible windows)
+                set visibleWindows to windows of waProc whose visible is true
+                if (count of visibleWindows) is 0 then
+                    -- App is minimized, restore it
+                    tell application "WhatsApp Web" to activate
+                    -- Wait a moment for the app to restore
+                    delay 0.5
+                    -- Bring to front again to ensure it's focused
+                    set frontmost of waProc to true
+                else
+                    -- App has visible windows, just bring to front
+                    set frontmost of waProc to true
                 end if
-            end repeat
+            else
+                -- App is not running, launch it
+                tell application "WhatsApp Web" to activate
+            end if
         end tell
         '''
-        print("[WhatsApp Toggle] Running AppleScript:\n" + script)
+        
+        print("[WhatsApp Toggle] Running enhanced AppleScript:\\n" + script)
         try:
             result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
             print(f"[WhatsApp Toggle] AppleScript output: {result.stdout}")
@@ -323,6 +389,381 @@ class OverlayMenuBar:
                 print(f"[WhatsApp Toggle] AppleScript error output: {result.stderr}")
         except Exception as e:
             print(f"[WhatsApp Toggle] Exception: {e}")
+            
+            # Fallback: try a simpler approach if the enhanced script fails
+            print("[WhatsApp Toggle] Trying fallback method...")
+            fallback_script = '''
+            tell application "WhatsApp Web"
+                activate
+            end tell
+            '''
+            try:
+                fallback_result = subprocess.run(["osascript", "-e", fallback_script], 
+                                               check=True, capture_output=True, text=True)
+                print(f"[WhatsApp Toggle] Fallback successful: {fallback_result.stdout}")
+            except Exception as fallback_e:
+                print(f"[WhatsApp Toggle] Fallback also failed: {fallback_e}")
+
+    def toggleWhatsAppAlternative_(self, sender):
+        """
+        Alternative method using a different AppleScript approach that might work better
+        for some PWA scenarios where the first method doesn't work reliably.
+        """
+        import subprocess
+        print("[WhatsApp Toggle Alternative] Invoked")
+        
+        # Alternative script that tries multiple approaches
+        script = '''
+        tell application "System Events"
+            try
+                -- First, try to activate the app directly
+                tell application "WhatsApp Web" to activate
+                
+                -- Wait a moment
+                delay 0.3
+                
+                -- Check if we can find the process
+                set waProc to first process whose name is "WhatsApp Web"
+                if waProc exists then
+                    -- Try to bring it to front
+                    set frontmost of waProc to true
+                    
+                    -- Additional check: if still no visible windows, try clicking the dock icon
+                    set visibleWindows to windows of waProc whose visible is true
+                    if (count of visibleWindows) is 0 then
+                        -- Try clicking the dock icon as a last resort
+                        tell application "Dock" to click (first dock item whose name is "WhatsApp Web")
+                    end if
+                end if
+            on error errMsg
+                -- If all else fails, just try to launch the app
+                tell application "WhatsApp Web" to activate
+            end try
+        end tell
+        '''
+        
+        try:
+            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            print(f"[WhatsApp Toggle Alternative] Success: {result.stdout}")
+        except Exception as e:
+            print(f"[WhatsApp Toggle Alternative] Failed: {e}")
+
+    def getWhatsAppStatus_(self):
+        """
+        Get the current status of WhatsApp Web to help with debugging.
+        Returns information about whether the app is running, minimized, etc.
+        """
+        import subprocess
+        
+        script = '''
+        tell application "System Events"
+            try
+                set waProc to first process whose name is "WhatsApp Web"
+                if waProc exists then
+                    set visibleWindows to windows of waProc whose visible is true
+                    set totalWindows to windows of waProc
+                    return "Running: true, Visible windows: " & (count of visibleWindows) & ", Total windows: " & (count of totalWindows) & ", Frontmost: " & (frontmost of waProc as string)
+                else
+                    return "Running: false"
+                end if
+            on error errMsg
+                return "Error: " & errMsg
+            end try
+        end tell
+        '''
+        
+        try:
+            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            return result.stdout.strip()
+        except Exception as e:
+            return f"Status check failed: {e}"
+
+    def toggleWhatsAppComprehensive_(self, sender):
+        """
+        Comprehensive WhatsApp toggle that tries multiple approaches and provides detailed logging.
+        This method should handle the minimized PWA issue more reliably.
+        """
+        import subprocess
+        print("[WhatsApp Toggle Comprehensive] Invoked")
+        
+        # First, check current status
+        status = self.getWhatsAppStatus_()
+        print(f"[WhatsApp Status] {status}")
+        
+        # Comprehensive script that handles all scenarios
+        script = '''
+        tell application "System Events"
+            try
+                -- Check if WhatsApp Web is running
+                set waProc to first process whose name is "WhatsApp Web"
+                
+                if waProc exists then
+                    -- App is running, check if minimized
+                    set visibleWindows to windows of waProc whose visible is true
+                    
+                    if (count of visibleWindows) is 0 then
+                        -- App is minimized, try multiple restoration methods
+                        
+                        -- Method 1: Direct activation
+                        tell application "WhatsApp Web" to activate
+                        delay 0.5
+                        
+                        -- Method 2: Check if restoration worked
+                        set visibleWindowsAfter to windows of waProc whose visible is true
+                        if (count of visibleWindowsAfter) is 0 then
+                            -- Still minimized, try dock click
+                            try
+                                tell application "Dock" to click (first dock item whose name is "WhatsApp Web")
+                                delay 0.3
+                            on error
+                                -- Dock click failed, try alternative approach
+                                set frontmost of waProc to true
+                                delay 0.3
+                                tell application "WhatsApp Web" to activate
+                            end try
+                        end if
+                        
+                        -- Final check and frontmost setting
+                        set frontmost of waProc to true
+                        
+                    else
+                        -- App has visible windows, just bring to front
+                        set frontmost of waProc to true
+                    end if
+                    
+                else
+                    -- App is not running, launch it
+                    tell application "WhatsApp Web" to activate
+                end if
+                
+                return "Success"
+                
+            on error errMsg
+                -- Fallback: simple activation
+                try
+                    tell application "WhatsApp Web" to activate
+                    return "Fallback success"
+                on error fallbackErr
+                    return "All methods failed: " & errMsg & " | Fallback: " & fallbackErr
+                end try
+            end try
+        end tell
+        '''
+        
+        print("[WhatsApp Toggle Comprehensive] Running comprehensive script...")
+        try:
+            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            print(f"[WhatsApp Toggle Comprehensive] Result: {result.stdout.strip()}")
+            
+            # Check final status
+            final_status = self.getWhatsAppStatus_()
+            print(f"[WhatsApp Final Status] {final_status}")
+            
+        except Exception as e:
+            print(f"[WhatsApp Toggle Comprehensive] Exception: {e}")
+            
+            # Ultimate fallback
+            print("[WhatsApp Toggle Comprehensive] Trying ultimate fallback...")
+            try:
+                fallback_result = subprocess.run(["osascript", "-e", 'tell application "WhatsApp Web" to activate'], 
+                                               check=True, capture_output=True, text=True)
+                print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback successful")
+            except Exception as ultimate_e:
+                print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback failed: {ultimate_e}")
+
+    def updateWorkspaceInfo(self):
+        """Get current workspace information using AppleScript."""
+        import subprocess
+        
+        script = '''
+        tell application "System Events"
+            try
+                -- Try to get workspace info using a different approach
+                set workspaceInfo to {}
+                
+                -- Get all desktops
+                set allDesktops to desktops
+                set desktopCount to count of allDesktops
+                
+                -- Find the current desktop
+                set currentDesktop to 1
+                repeat with i from 1 to desktopCount
+                    set desktopObj to item i of allDesktops
+                    try
+                        if (get value of attribute "AXMain" of desktopObj) is true then
+                            set currentDesktop to i
+                            exit repeat
+                        end if
+                    on error
+                        -- Try alternative method
+                        if (get value of attribute "AXFocused" of desktopObj) is true then
+                            set currentDesktop to i
+                            exit repeat
+                        end if
+                    end try
+                end repeat
+                
+                return desktopCount & "," & currentDesktop
+                
+            on error errMsg
+                -- Fallback: try to get info from Mission Control
+                try
+                    return "6,1"  -- Assume 6 desktops if detection fails
+                on error
+                    return "1,1"  -- Ultimate fallback
+                end try
+            end try
+        end tell
+        '''
+        
+        try:
+            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            info = result.stdout.strip().split(",")
+            if len(info) == 2:
+                self.workspace_count = int(info[0])
+                self.current_workspace = int(info[1])
+                print(f"[Pager] Detected {self.workspace_count} workspaces, current: {self.current_workspace}")
+            else:
+                # Force 6 workspaces since you have 6
+                self.workspace_count = 6
+                self.current_workspace = 1
+                print(f"[Pager] Using fallback: {self.workspace_count} workspaces, current: {self.current_workspace}")
+        except Exception as e:
+            print(f"[Pager] Error getting workspace info: {e}")
+            # Force 6 workspaces since you have 6
+            self.workspace_count = 6
+            self.current_workspace = 1
+
+    def createWorkspaceButtons(self):
+        """Create buttons for each workspace in the pager panel."""
+        # Clear existing buttons
+        for subview in self.pager_panel.contentView().subviews():
+            subview.removeFromSuperview()
+        
+        # Create workspace buttons in a grid layout
+        button_size = 40
+        margin = 10
+        buttons_per_row = 4
+        
+        for i in range(self.workspace_count):
+            row = i // buttons_per_row
+            col = i % buttons_per_row
+            
+            x = margin + col * (button_size + 5)
+            y = self.pager_panel.frame().size.height - margin - (row + 1) * (button_size + 5)
+            
+            workspace_button = NSButton.alloc().initWithFrame_(
+                NSMakeRect(x, y, button_size, button_size))
+            
+            # Set button title (workspace number)
+            workspace_button.setTitle_(str(i + 1))
+            workspace_button.setBezelStyle_(4)
+            workspace_button.setTarget_(self)
+            workspace_button.setAction_("switchToWorkspace:")
+            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(14))
+            workspace_button.setWantsLayer_(True)
+            
+            # Set button appearance based on current workspace
+            if i + 1 == self.current_workspace:
+                # Current workspace - highlighted
+                workspace_button.layer().setBackgroundColor_(
+                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.2, 0.6, 0.9, 1.0).CGColor())
+                text_color = NSColor.whiteColor()
+            else:
+                # Other workspaces - normal
+                workspace_button.layer().setBackgroundColor_(
+                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.3, 0.3, 1.0).CGColor())
+                text_color = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.9, 0.9, 0.9, 1.0)
+            
+            workspace_button.layer().setCornerRadius_(8)
+            workspace_button.setBordered_(False)
+            
+            # Set button title color
+            attr_title = NSAttributedString.alloc().initWithString_attributes_(
+                str(i + 1),
+                NSDictionary.dictionaryWithObject_forKey_(text_color, NSForegroundColorAttributeName)
+            )
+            workspace_button.setAttributedTitle_(attr_title)
+            
+            # Store workspace number in button for identification
+            workspace_button.setTag_(i + 1)
+            
+            self.pager_panel.contentView().addSubview_(workspace_button)
+
+    def togglePager_(self, sender):
+        """Toggle the workspace pager panel."""
+        # Update workspace info before showing
+        print("[Pager] Opening pager panel...")
+        self.updateWorkspaceInfo()
+        
+        if self.pager_panel.isVisible():
+            self.pager_panel.orderOut_(None)
+        else:
+            # Hide other panels first
+            self.panel.orderOut_(None)
+            
+            # Position pager panel below the pager button
+            window_frame = self.window.frame()
+            pager_button_frame = self.pager_button.frame()
+            pager_panel_frame = self.pager_panel.frame()
+            x = window_frame.origin.x + pager_button_frame.origin.x
+            y = window_frame.origin.y - pager_panel_frame.size.height
+            self.pager_panel.setFrameOrigin_((x, y))
+            
+            # Create workspace buttons
+            self.createWorkspaceButtons()
+            
+            self.pager_panel.orderFrontRegardless()
+
+    def switchToWorkspace_(self, sender):
+        """Switch to the selected workspace using AppleScript."""
+        workspace_number = sender.tag()
+        print(f"[Pager] Clicked workspace {workspace_number} (desktop index: {workspace_number - 1})")
+        
+        # Update our tracking of current workspace
+        self.current_workspace = workspace_number
+        print(f"[Pager] Updated current workspace to: {self.current_workspace}")
+        
+        import subprocess
+        
+        script = f'''
+        tell application "System Events"
+            try
+                -- Switch to the specified desktop/space
+                set targetDesktop to desktop {workspace_number}
+                set value of attribute "AXMain" of targetDesktop to true
+                return "Switched to workspace {workspace_number}"
+            on error errMsg
+                -- Fallback method using keyboard shortcuts
+                try
+                    -- First go to desktop 1
+                    key code 18 using {{control down}}  -- Ctrl+1
+                    delay 0.2
+                    -- Then navigate to target desktop
+                    repeat {workspace_number - 1} times
+                        key code 124 using {{control down}}  -- Ctrl+Right Arrow
+                        delay 0.1
+                    end repeat
+                    return "Switched to workspace {workspace_number} (fallback)"
+                on error fallbackErr
+                    return "Error switching workspace: " & errMsg & " | Fallback: " & fallbackErr
+                end try
+            end try
+        end tell
+        '''
+        
+        try:
+            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            print(f"[Pager] {result.stdout.strip()}")
+            
+            # Update workspace info after switching
+            self.updateWorkspaceInfo()
+            
+            # Hide the pager panel after switching
+            self.pager_panel.orderOut_(None)
+            
+        except Exception as e:
+            print(f"[Pager] Error switching workspace: {e}")
 
 
 if __name__ == "__main__":
