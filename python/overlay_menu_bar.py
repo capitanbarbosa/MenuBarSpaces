@@ -224,7 +224,7 @@ class OverlayMenuBar:
             workspace_button.setBordered_(False)
             workspace_button.setWantsLayer_(True)
             workspace_button.layer().setCornerRadius_(0)  # No corner radius for section look
-            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(14))  # Larger font for section look
+            workspace_button.setFont_(NSFont.systemFontOfSize_(14))  # Normal font for section look
             workspace_button.setTag_(i + 1)
             # Add more horizontal padding if available
             if hasattr(workspace_button, 'setContentInsets_'):
