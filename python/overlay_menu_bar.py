@@ -69,6 +69,7 @@ class OverlayMenuBar:
 
         # Initialize simple workspace tracking 
         self.workspace_count = 6
+        self.workspace_names = ["Log", "Dev", "Biz", "Media", "Chat", "Web"]
         self.current_workspace = 1  # We'll always start at desktop 1
         self.workspace_buttons = []
         
@@ -215,7 +216,7 @@ class OverlayMenuBar:
             workspace_button = NSButton.alloc().initWithFrame_(
                 NSMakeRect(workspace_x, 1, workspace_button_width, workspace_button_height))
             
-            workspace_button.setTitle_(str(i + 1))
+            workspace_button.setTitle_(self.workspace_names[i])
             workspace_button.setBezelStyle_(4)
             workspace_button.setAction_("switchToWorkspace:")
             workspace_button.setTarget_(self)
@@ -547,7 +548,7 @@ class OverlayMenuBar:
         """Update the appearance of workspace buttons to reflect current state."""
         for i, button in enumerate(self.workspace_buttons):
             workspace_num = i + 1
-            
+            workspace_name = self.workspace_names[i]
             if workspace_num == self.current_workspace:
                 # Current workspace - highlighted with blue background
                 button.layer().setBackgroundColor_(
@@ -565,10 +566,9 @@ class OverlayMenuBar:
                 button.layer().setBorderWidth_(0.5)
                 button.layer().setBorderColor_(
                     NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.3, 0.3, 1.0).CGColor())
-            
             # Set button title color
             attr_title = NSAttributedString.alloc().initWithString_attributes_(
-                str(workspace_num),
+                workspace_name,
                 NSDictionary.dictionaryWithObject_forKey_(text_color, NSForegroundColorAttributeName)
             )
             button.setAttributedTitle_(attr_title)
