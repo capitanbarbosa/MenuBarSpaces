@@ -53,7 +53,7 @@ class OverlayMenuBar:
         self.window.setOpaque_(False)
         # Set a visible solid red background color (fully opaque)
         self.window.setBackgroundColor_(
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.137, 0.152, 0.184, 1.0))  # #23272F Charcoal Gray
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0))  # #222222
         self.window.setAlphaValue_(1.0)
 
         # Make the window appear on all Spaces (Desktops) and stay visible in Exposé/Spaces
@@ -90,7 +90,7 @@ class OverlayMenuBar:
         button.setBordered_(False)
         button.setWantsLayer_(True)
         # Set button background color to #23272F with a slightly lighter border for differentiation
-        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.137, 0.152, 0.184, 1.0)  # #23272F
+        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)  # #222222
         button.layer().setBackgroundColor_(button_bg.CGColor())
         button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
         # Add padding by increasing contentInsets (if available)
@@ -230,6 +230,7 @@ class OverlayMenuBar:
             if hasattr(workspace_button, 'setContentInsets_'):
                 from Cocoa import NSEdgeInsetsMake
                 workspace_button.setContentInsets_(NSEdgeInsetsMake(4, 12, 4, 12))
+            workspace_button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0).CGColor())  # #222222
             self.workspace_buttons.append(workspace_button)
             self.window.contentView().addSubview_(workspace_button)
 
@@ -291,7 +292,7 @@ class OverlayMenuBar:
         swipes_needed = target_workspace - self.current_workspace
         direction = "right" if swipes_needed > 0 else "left"
         swipes_count = abs(swipes_needed)
-        key_code = "124" if direction == "right" else "123"  # Right or Left arrow
+        key_code = "124" if direction == "right" else "123" # Right or Left arrow
         
         script = f'''
         tell application "System Events"
@@ -531,13 +532,13 @@ class OverlayMenuBar:
             workspace_num = i + 1
             workspace_name = self.workspace_names[i]
             if workspace_num == self.current_workspace:
-                # Active workspace - green background (as in screenshot)
-                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.298, 0.686, 0.314, 1.0).CGColor())  # #4CAF50
+                # Active workspace - #38761d
+                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.219, 0.463, 0.114, 1.0).CGColor())  # #38761d
                 text_color = NSColor.whiteColor()
                 button.layer().setBorderWidth_(0)
             else:
-                # Inactive workspace - dark gray background
-                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.137, 0.152, 0.184, 1.0).CGColor())  # #23272F
+                # Inactive workspace - #222222
+                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0).CGColor())  # #222222
                 text_color = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.7, 0.7, 0.7, 1.0)
                 button.layer().setBorderWidth_(0)
             # Set button title color
