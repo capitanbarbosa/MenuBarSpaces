@@ -39,7 +39,7 @@ class OverlayMenuBar:
         frame = screen.frame()
         # Set height for your custom menu bar (e.g., 30 pixels)
         menu_bar_height = 30
-        left_margin = 150  # Add left margin for floating effect
+        left_margin = 120  # Adjust left margin for floating effect
         rect = NSRect((left_margin, frame.size.height - menu_bar_height),
                       (frame.size.width - left_margin, menu_bar_height))
 
@@ -338,10 +338,18 @@ class OverlayMenuBar:
         # Animate window fading out
         NSAnimationContext.beginGrouping()
         NSAnimationContext.currentContext().setDuration_(0.2)
+        
+        # Use a completion handler to safely hide the window after animation.
+        # This avoids potential crashes from `performSelector_withObject_afterDelay_`
+        # if the object gets garbage-collected.
+        def completion_handler():
+            self.window.orderOut_(None)
+
+        NSAnimationContext.currentContext().setCompletionHandler_(completion_handler)
+        
         self.window.animator().setAlphaValue_(0.0)
         NSAnimationContext.endGrouping()
-        # Hide window after animation completes
-        self.window.performSelector_withObject_afterDelay_("orderOut:", None, 0.25)
+        
         # Also hide panels
         self.panel.orderOut_(None)
         self.pager_panel.orderOut_(None)
@@ -575,66 +583,73 @@ class OverlayMenuBar:
     def updateWorkspaceInfo(self, debug=False):
         """Get current workspace information using AppleScript. Tries multiple strategies."""
         import subprocess
-        script = '''
-        tell application "System Events"
-            try
-                set allDesktops to desktops
-                set desktopCount to count of allDesktops
+        
+        # Force 6 workspaces since you have 6 desktops
+        self.workspace_count = 6
+        
+        # Try to detect current workspace using multiple methods
+        scripts = [
+            # Method 1: Check which desktop has the frontmost window
+            '''
+            tell application "System Events"
                 set currentDesktop to 1
-                repeat with i from 1 to desktopCount
-                    set desktopObj to item i of allDesktops
+                repeat with i from 1 to 6
                     try
-                        if (get value of attribute "AXMain" of desktopObj) is true then
-                            set currentDesktop to i
-                            exit repeat
-                        end if
-                    on error
-                        try
-                            if (get value of attribute "AXFocused" of desktopObj) is true then
+                        set desktopObj to desktop i
+                        set winList to windows of desktopObj
+                        repeat with w in winList
+                            if (get value of attribute "AXMain" of w) is true then
                                 set currentDesktop to i
                                 exit repeat
                             end if
-                        on error
-                            -- Try to get the display of the frontmost window
-                            try
-                                set winList to windows of desktopObj
-                                repeat with w in winList
-                                    if (get value of attribute "AXMain" of w) is true then
-                                        set currentDesktop to i
-                                        exit repeat
-                                    end if
-                                end repeat
-                            end try
-                        end try
+                        end repeat
                     end try
                 end repeat
-                return desktopCount & "," & currentDesktop
-            on error errMsg
-                try
-                    return "6,1"
-                on error
-                    return "1,1"
-                end try
-            end try
-        end tell
-        '''
-        try:
-            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-            info = result.stdout.strip().split(",")
-            if len(info) == 2:
-                self.workspace_count = int(info[0])
-                self.current_workspace = int(info[1])
-                print(f"[Pager] Detected {self.workspace_count} workspaces, current: {self.current_workspace}")
-                if debug:
-                    print(f"[Pager][Debug] AppleScript output: {result.stdout.strip()}")
-            else:
-                self.workspace_count = 6
-                self.current_workspace = 1
-                print(f"[Pager] Using fallback: {self.workspace_count} workspaces, current: {self.current_workspace}")
-        except Exception as e:
-            print(f"[Pager] Error getting workspace info: {e}")
-            self.workspace_count = 6
-            self.current_workspace = 1
+                return currentDesktop
+            end tell
+            ''',
+            
+            # Method 2: Check which desktop is active
+            '''
+            tell application "System Events"
+                set currentDesktop to 1
+                repeat with i from 1 to 6
+                    try
+                        if (get value of attribute "AXMain" of desktop i) is true then
+                            set currentDesktop to i
+                            exit repeat
+                        end if
+                    end try
+                end repeat
+                return currentDesktop
+            end tell
+            ''',
+            
+            # Method 3: Fallback - just return 1
+            '''
+            return 1
+            '''
+        ]
+        
+        for i, script in enumerate(scripts):
+            try:
+                result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+                current = int(result.stdout.strip())
+                if 1 <= current <= 6:
+                    self.current_workspace = current
+                    print(f"[Pager] Method {i+1} success: {self.workspace_count} workspaces, current: {self.current_workspace}")
+                    if debug:
+                        print(f"[Pager][Debug] AppleScript output: {result.stdout.strip()}")
+                    return
+                else:
+                    print(f"[Pager] Method {i+1} failed: invalid workspace number {current}")
+            except Exception as e:
+                print(f"[Pager] Method {i+1} failed: {e}")
+                continue
+        
+        # If all methods fail, use fallback
+        self.current_workspace = 1
+        print(f"[Pager] All methods failed, using fallback: {self.workspace_count} workspaces, current: {self.current_workspace}")
 
     def createWorkspaceButtons(self):
         """Create buttons for each workspace in the pager panel."""
