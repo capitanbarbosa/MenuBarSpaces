@@ -53,7 +53,7 @@ class OverlayMenuBar:
         self.window.setOpaque_(False)
         # Set a visible solid red background color (fully opaque)
         self.window.setBackgroundColor_(
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0))  # #222222
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.094, 0.094, 0.094, 1.0))  # #181818
         self.window.setAlphaValue_(1.0)
 
         # Make the window appear on all Spaces (Desktops) and stay visible in Exposé/Spaces
