@@ -572,21 +572,14 @@ class OverlayMenuBar:
             except Exception as ultimate_e:
                 print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback failed: {ultimate_e}")
 
-    def updateWorkspaceInfo(self):
-        """Get current workspace information using AppleScript."""
+    def updateWorkspaceInfo(self, debug=False):
+        """Get current workspace information using AppleScript. Tries multiple strategies."""
         import subprocess
-        
         script = '''
         tell application "System Events"
             try
-                -- Try to get workspace info using a different approach
-                set workspaceInfo to {}
-                
-                -- Get all desktops
                 set allDesktops to desktops
                 set desktopCount to count of allDesktops
-                
-                -- Find the current desktop
                 set currentDesktop to 1
                 repeat with i from 1 to desktopCount
                     set desktopObj to item i of allDesktops
@@ -596,27 +589,35 @@ class OverlayMenuBar:
                             exit repeat
                         end if
                     on error
-                        -- Try alternative method
-                        if (get value of attribute "AXFocused" of desktopObj) is true then
-                            set currentDesktop to i
-                            exit repeat
-                        end if
+                        try
+                            if (get value of attribute "AXFocused" of desktopObj) is true then
+                                set currentDesktop to i
+                                exit repeat
+                            end if
+                        on error
+                            -- Try to get the display of the frontmost window
+                            try
+                                set winList to windows of desktopObj
+                                repeat with w in winList
+                                    if (get value of attribute "AXMain" of w) is true then
+                                        set currentDesktop to i
+                                        exit repeat
+                                    end if
+                                end repeat
+                            end try
+                        end try
                     end try
                 end repeat
-                
                 return desktopCount & "," & currentDesktop
-                
             on error errMsg
-                -- Fallback: try to get info from Mission Control
                 try
-                    return "6,1"  -- Assume 6 desktops if detection fails
+                    return "6,1"
                 on error
-                    return "1,1"  -- Ultimate fallback
+                    return "1,1"
                 end try
             end try
         end tell
         '''
-        
         try:
             result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
             info = result.stdout.strip().split(",")
@@ -624,14 +625,14 @@ class OverlayMenuBar:
                 self.workspace_count = int(info[0])
                 self.current_workspace = int(info[1])
                 print(f"[Pager] Detected {self.workspace_count} workspaces, current: {self.current_workspace}")
+                if debug:
+                    print(f"[Pager][Debug] AppleScript output: {result.stdout.strip()}")
             else:
-                # Force 6 workspaces since you have 6
                 self.workspace_count = 6
                 self.current_workspace = 1
                 print(f"[Pager] Using fallback: {self.workspace_count} workspaces, current: {self.current_workspace}")
         except Exception as e:
             print(f"[Pager] Error getting workspace info: {e}")
-            # Force 6 workspaces since you have 6
             self.workspace_count = 6
             self.current_workspace = 1
 
@@ -718,15 +719,15 @@ class OverlayMenuBar:
 
     def switchToWorkspace_(self, sender):
         """Switch to the selected workspace using AppleScript."""
+        import subprocess
+        import time
         workspace_number = sender.tag()
         print(f"[Pager] Clicked workspace {workspace_number} (desktop index: {workspace_number - 1})")
-        
-        # Update our tracking of current workspace
+
+        # Update our tracking of current workspace (optimistically)
         self.current_workspace = workspace_number
         print(f"[Pager] Updated current workspace to: {self.current_workspace}")
-        
-        import subprocess
-        
+
         script = f'''
         tell application "System Events"
             try
@@ -752,17 +753,28 @@ class OverlayMenuBar:
             end try
         end tell
         '''
-        
+
         try:
             result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
             print(f"[Pager] {result.stdout.strip()}")
-            
-            # Update workspace info after switching
+
+            # Add a short delay to allow macOS to update workspace state
+            time.sleep(0.5)
+
+            # Try to update workspace info again
+            prev_workspace = self.current_workspace
             self.updateWorkspaceInfo()
-            
+            # If detection fails (still shows old workspace), use fallback
+            if self.current_workspace == prev_workspace or self.current_workspace == 1:
+                self.current_workspace = workspace_number
+                print(f"[Pager] Fallback: Forcing current workspace to {workspace_number}")
+
+            # Update pager UI
+            self.createWorkspaceButtons()
+
             # Hide the pager panel after switching
             self.pager_panel.orderOut_(None)
-            
+
         except Exception as e:
             print(f"[Pager] Error switching workspace: {e}")
 
