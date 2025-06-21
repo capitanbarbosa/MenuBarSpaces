@@ -67,12 +67,11 @@ class OverlayMenuBar:
                     NSWindowCollectionBehaviorFullScreenAuxiliary)
         self.window.setCollectionBehavior_(behavior)
 
-        # Initialize workspace info early
+        # Initialize simple workspace tracking 
         self.workspace_count = 6
-        self.current_workspace = 1
+        self.current_workspace = 1  # We'll always start at desktop 1
         self.workspace_buttons = []
-        self.updateWorkspaceInfo()
-
+        
         # Add your custom drawing or views here
 
         # Add a placeholder button to the overlay
@@ -262,8 +261,117 @@ class OverlayMenuBar:
         self.hotkey_listener_thread = None
         self.setup_hotkey_listener()
         
-        # Start periodic workspace state updates
+        # Reset to desktop 1 on startup and start monitoring
+        self.resetToFirstDesktop()
         self.setup_workspace_monitor()
+
+    def resetToFirstDesktop(self):
+        """Reset to desktop 1 by simulating multiple left swipes."""
+        import subprocess
+        import time
+        
+        print("[Pager] Resetting to desktop 1...")
+        
+        # Simulate 20 desktop left swipes to ensure we're at desktop 1
+        script = '''
+        tell application "System Events"
+            repeat 20 times
+                key code 123 using {control down}  -- Ctrl+Left Arrow
+                delay 0.05
+            end repeat
+        end tell
+        '''
+        
+        try:
+            subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            self.current_workspace = 1
+            print("[Pager] Reset to desktop 1 complete")
+            
+            # Update button appearance
+            from PyObjCTools.AppHelper import callAfter
+            callAfter(self.updateWorkspaceButtons)
+            
+        except Exception as e:
+            print(f"[Pager] Error resetting to desktop 1: {e}")
+
+    def switchToWorkspaceSimple(self, target_workspace):
+        """Switch to target workspace using simple left/right navigation."""
+        import subprocess
+        import time
+        
+        if target_workspace == self.current_workspace:
+            print(f"[Pager] Already on workspace {target_workspace}")
+            return
+        
+        print(f"[Pager] Switching: {self.current_workspace} → {target_workspace}")
+        
+        # Calculate direction and number of swipes
+        swipes_needed = target_workspace - self.current_workspace
+        direction = "right" if swipes_needed > 0 else "left"
+        swipes_count = abs(swipes_needed)
+        key_code = "124" if direction == "right" else "123"  # Right or Left arrow
+        
+        script = f'''
+        tell application "System Events"
+            repeat {swipes_count} times
+                key code {key_code} using {{control down}}
+                delay 0.1
+            end repeat
+        end tell
+        '''
+        
+        try:
+            # Update our tracking immediately for responsive UI
+            self.current_workspace = target_workspace
+            self.updateWorkspaceButtons()
+            
+            # Execute the switch
+            subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
+            print(f"[Pager] Successfully switched to workspace {target_workspace}")
+            
+        except Exception as e:
+            print(f"[Pager] Error switching workspace: {e}")
+            # Revert on error
+            self.detectMissionControlReset()
+
+    def detectMissionControlReset(self):
+        """Detect Mission Control usage and reset tracking."""
+        print("[Pager] Mission Control detected, resetting to desktop 1...")
+        self.resetToFirstDesktop()
+
+    def query_current_workspace(self):
+        """Query the current active workspace (desktop/space) using yabai."""
+        import subprocess
+        import json
+        try:
+            result = subprocess.run(
+                ["yabai", "-m", "query", "--spaces", "--space"],
+                capture_output=True, text=True, check=True, timeout=2
+            )
+            data = json.loads(result.stdout)
+            return data.get("index")
+        except FileNotFoundError:
+            print("[Pager] yabai is not installed or not in PATH.")
+            return None
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
+            print(f"[Pager] Error with yabai: {e}")
+            return None
+
+    def workspace_sync_monitor(self):
+        """Periodically syncs the current workspace state by querying yabai."""
+        import time
+        from PyObjCTools.AppHelper import callAfter
+
+        while True:
+            try:
+                current_space = self.query_current_workspace()
+                if current_space is not None and current_space != self.current_workspace:
+                    print(f"[Pager] Workspace synced: {self.current_workspace} -> {current_space}")
+                    self.current_workspace = current_space
+                    callAfter(self.updateWorkspaceButtons)
+            except Exception as e:
+                print(f"[Pager] Sync monitor encountered an error: {e}")
+            time.sleep(1)
 
     def setup_hotkey_listener(self):
         if not check_accessibility_permissions():
@@ -282,8 +390,6 @@ class OverlayMenuBar:
                         self.window.orderOut_(None)
                         # Also hide the panel if open
                         self.panel.orderOut_(None)
-                        # Also hide the pager panel if open
-                        # self.pager_panel.orderOut_(None) # This line is removed as pager_panel is no longer initialized
                     else:
                         self.window.orderFrontRegardless()
             except Exception as e:
@@ -295,24 +401,8 @@ class OverlayMenuBar:
         self.hotkey_listener_thread = t
 
     def setup_workspace_monitor(self):
-        """Set up a background thread to monitor workspace changes."""
-        def workspace_monitor():
-            import time
-            while True:
-                try:
-                    old_workspace = self.current_workspace
-                    self.updateWorkspaceInfo()
-                    if old_workspace != self.current_workspace:
-                        print(f"[Pager Monitor] Workspace changed from {old_workspace} to {self.current_workspace}")
-                        # Update buttons on main thread
-                        from PyObjCTools.AppHelper import callAfter
-                        callAfter(self.updateWorkspaceButtons)
-                    time.sleep(2)  # Check every 2 seconds
-                except Exception as e:
-                    print(f"[Pager Monitor] Error: {e}")
-                    time.sleep(5)  # Wait longer on error
-        
-        monitor_thread = threading.Thread(target=workspace_monitor, daemon=True)
+        """Set up the workspace monitoring thread to keep desktop state in sync using yabai."""
+        monitor_thread = threading.Thread(target=self.workspace_sync_monitor, daemon=True)
         monitor_thread.start()
 
     def togglePanel_(self, sender):
@@ -361,140 +451,12 @@ class OverlayMenuBar:
         
         # Also hide panels
         self.panel.orderOut_(None)
-        # self.pager_panel.orderOut_(None) # This line is removed as pager_panel is no longer initialized
 
     def panelOptionClicked_(self, sender):
         # Placeholder: print which option was clicked
         print(f"Clicked: {sender.title()}")
         if sender.title() == "Quit":
             NSApplication.sharedApplication().terminate_(None)
-
-    # Add this method to OverlayMenuBar
-    def toggleWhatsApp_(self, sender):
-        import subprocess
-        print("[WhatsApp Toggle] Invoked toggleWhatsApp_")
-        
-        # Enhanced AppleScript that handles minimized windows
-        script = '''
-        tell application "System Events"
-            set waProc to first process whose name is "WhatsApp Web"
-            if waProc exists then
-                -- Check if the app is minimized (has no visible windows)
-                set visibleWindows to windows of waProc whose visible is true
-                if (count of visibleWindows) is 0 then
-                    -- App is minimized, restore it
-                    tell application "WhatsApp Web" to activate
-                    -- Wait a moment for the app to restore
-                    delay 0.5
-                    -- Bring to front again to ensure it's focused
-                    set frontmost of waProc to true
-                else
-                    -- App has visible windows, just bring to front
-                    set frontmost of waProc to true
-                end if
-            else
-                -- App is not running, launch it
-                tell application "WhatsApp Web" to activate
-            end if
-        end tell
-        '''
-        
-        print("[WhatsApp Toggle] Running enhanced AppleScript:\\n" + script)
-        try:
-            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-            print(f"[WhatsApp Toggle] AppleScript output: {result.stdout}")
-            if result.stderr:
-                print(f"[WhatsApp Toggle] AppleScript error output: {result.stderr}")
-        except Exception as e:
-            print(f"[WhatsApp Toggle] Exception: {e}")
-            
-            # Fallback: try a simpler approach if the enhanced script fails
-            print("[WhatsApp Toggle] Trying fallback method...")
-            fallback_script = '''
-            tell application "WhatsApp Web"
-                activate
-            end tell
-            '''
-            try:
-                fallback_result = subprocess.run(["osascript", "-e", fallback_script], 
-                                               check=True, capture_output=True, text=True)
-                print(f"[WhatsApp Toggle] Fallback successful: {fallback_result.stdout}")
-            except Exception as fallback_e:
-                print(f"[WhatsApp Toggle] Fallback also failed: {fallback_e}")
-
-    def toggleWhatsAppAlternative_(self, sender):
-        """
-        Alternative method using a different AppleScript approach that might work better
-        for some PWA scenarios where the first method doesn't work reliably.
-        """
-        import subprocess
-        print("[WhatsApp Toggle Alternative] Invoked")
-        
-        # Alternative script that tries multiple approaches
-        script = '''
-        tell application "System Events"
-            try
-                -- First, try to activate the app directly
-                tell application "WhatsApp Web" to activate
-                
-                -- Wait a moment
-                delay 0.3
-                
-                -- Check if we can find the process
-                set waProc to first process whose name is "WhatsApp Web"
-                if waProc exists then
-                    -- Try to bring it to front
-                    set frontmost of waProc to true
-                    
-                    -- Additional check: if still no visible windows, try clicking the dock icon
-                    set visibleWindows to windows of waProc whose visible is true
-                    if (count of visibleWindows) is 0 then
-                        -- Try clicking the dock icon as a last resort
-                        tell application "Dock" to click (first dock item whose name is "WhatsApp Web")
-                    end if
-                end if
-            on error errMsg
-                -- If all else fails, just try to launch the app
-                tell application "WhatsApp Web" to activate
-            end try
-        end tell
-        '''
-        
-        try:
-            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-            print(f"[WhatsApp Toggle Alternative] Success: {result.stdout}")
-        except Exception as e:
-            print(f"[WhatsApp Toggle Alternative] Failed: {e}")
-
-    def getWhatsAppStatus_(self):
-        """
-        Get the current status of WhatsApp Web to help with debugging.
-        Returns information about whether the app is running, minimized, etc.
-        """
-        import subprocess
-        
-        script = '''
-        tell application "System Events"
-            try
-                set waProc to first process whose name is "WhatsApp Web"
-                if waProc exists then
-                    set visibleWindows to windows of waProc whose visible is true
-                    set totalWindows to windows of waProc
-                    return "Running: true, Visible windows: " & (count of visibleWindows) & ", Total windows: " & (count of totalWindows) & ", Frontmost: " & (frontmost of waProc as string)
-                else
-                    return "Running: false"
-                end if
-            on error errMsg
-                return "Error: " & errMsg
-            end try
-        end tell
-        '''
-        
-        try:
-            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-            return result.stdout.strip()
-        except Exception as e:
-            return f"Status check failed: {e}"
 
     def toggleWhatsAppComprehensive_(self, sender):
         """
@@ -503,10 +465,6 @@ class OverlayMenuBar:
         """
         import subprocess
         print("[WhatsApp Toggle Comprehensive] Invoked")
-        
-        # First, check current status
-        status = self.getWhatsAppStatus_()
-        print(f"[WhatsApp Status] {status}")
         
         # Comprehensive script that handles all scenarios
         script = '''
@@ -573,10 +531,6 @@ class OverlayMenuBar:
             result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
             print(f"[WhatsApp Toggle Comprehensive] Result: {result.stdout.strip()}")
             
-            # Check final status
-            final_status = self.getWhatsAppStatus_()
-            print(f"[WhatsApp Final Status] {final_status}")
-            
         except Exception as e:
             print(f"[WhatsApp Toggle Comprehensive] Exception: {e}")
             
@@ -588,77 +542,6 @@ class OverlayMenuBar:
                 print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback successful")
             except Exception as ultimate_e:
                 print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback failed: {ultimate_e}")
-
-    def updateWorkspaceInfo(self, debug=False):
-        """Get current workspace information using AppleScript. Tries multiple strategies."""
-        import subprocess
-        
-        # Force 6 workspaces since you have 6 desktops
-        self.workspace_count = 6
-        
-        # Try to detect current workspace using multiple methods
-        scripts = [
-            # Method 1: Check which desktop has the frontmost window
-            '''
-            tell application "System Events"
-                set currentDesktop to 1
-                repeat with i from 1 to 6
-                    try
-                        set desktopObj to desktop i
-                        set winList to windows of desktopObj
-                        repeat with w in winList
-                            if (get value of attribute "AXMain" of w) is true then
-                                set currentDesktop to i
-                                exit repeat
-                            end if
-                        end repeat
-                    end try
-                end repeat
-                return currentDesktop
-            end tell
-            ''',
-            
-            # Method 2: Check which desktop is active
-            '''
-            tell application "System Events"
-                set currentDesktop to 1
-                repeat with i from 1 to 6
-                    try
-                        if (get value of attribute "AXMain" of desktop i) is true then
-                            set currentDesktop to i
-                            exit repeat
-                        end if
-                    end try
-                end repeat
-                return currentDesktop
-            end tell
-            ''',
-            
-            # Method 3: Fallback - just return 1
-            '''
-            return 1
-            '''
-        ]
-        
-        for i, script in enumerate(scripts):
-            try:
-                result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-                current = int(result.stdout.strip())
-                if 1 <= current <= 6:
-                    self.current_workspace = current
-                    print(f"[Pager] Method {i+1} success: {self.workspace_count} workspaces, current: {self.current_workspace}")
-                    if debug:
-                        print(f"[Pager][Debug] AppleScript output: {result.stdout.strip()}")
-                    return
-                else:
-                    print(f"[Pager] Method {i+1} failed: invalid workspace number {current}")
-            except Exception as e:
-                print(f"[Pager] Method {i+1} failed: {e}")
-                continue
-        
-        # If all methods fail, use fallback
-        self.current_workspace = 1
-        print(f"[Pager] All methods failed, using fallback: {self.workspace_count} workspaces, current: {self.current_workspace}")
 
     def updateWorkspaceButtons(self):
         """Update the appearance of workspace buttons to reflect current state."""
@@ -691,68 +574,9 @@ class OverlayMenuBar:
             button.setAttributedTitle_(attr_title)
 
     def switchToWorkspace_(self, sender):
-        """Switch to the selected workspace using AppleScript."""
-        import subprocess
-        import time
+        """Switch to the selected workspace using simple tracking."""
         workspace_number = sender.tag()
-        print(f"[Pager] Clicked workspace {workspace_number} (desktop index: {workspace_number - 1})")
-
-        # Update our tracking of current workspace (optimistically)
-        self.current_workspace = workspace_number
-        print(f"[Pager] Updated current workspace to: {self.current_workspace}")
-
-        # Update button appearances immediately for responsive feedback
-        self.updateWorkspaceButtons()
-
-        script = f'''
-        tell application "System Events"
-            try
-                -- Switch to the specified desktop/space
-                set targetDesktop to desktop {workspace_number}
-                set value of attribute "AXMain" of targetDesktop to true
-                return "Switched to workspace {workspace_number}"
-            on error errMsg
-                -- Fallback method using keyboard shortcuts
-                try
-                    -- First go to desktop 1
-                    key code 18 using {{control down}}  -- Ctrl+1
-                    delay 0.2
-                    -- Then navigate to target desktop
-                    repeat {workspace_number - 1} times
-                        key code 124 using {{control down}}  -- Ctrl+Right Arrow
-                        delay 0.1
-                    end repeat
-                    return "Switched to workspace {workspace_number} (fallback)"
-                on error fallbackErr
-                    return "Error switching workspace: " & errMsg & " | Fallback: " & fallbackErr
-                end try
-            end try
-        end tell
-        '''
-
-        try:
-            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-            print(f"[Pager] {result.stdout.strip()}")
-
-            # Add a short delay to allow macOS to update workspace state
-            time.sleep(0.5)
-
-            # Try to update workspace info again
-            prev_workspace = self.current_workspace
-            self.updateWorkspaceInfo()
-            # If detection fails (still shows old workspace), use fallback
-            if self.current_workspace == prev_workspace or self.current_workspace == 1:
-                self.current_workspace = workspace_number
-                print(f"[Pager] Fallback: Forcing current workspace to {workspace_number}")
-
-            # Update button appearances to reflect actual state
-            self.updateWorkspaceButtons()
-
-        except Exception as e:
-            print(f"[Pager] Error switching workspace: {e}")
-            # Revert button appearance on error
-            self.updateWorkspaceInfo()
-            self.updateWorkspaceButtons()
+        self.switchToWorkspaceSimple(workspace_number)
 
 
 if __name__ == "__main__":
