@@ -37,8 +37,8 @@ class OverlayMenuBar:
     def __init__(self):
         screen = NSScreen.mainScreen()
         frame = screen.frame()
-        # Set height for your custom menu bar (e.g., 30 pixels)
-        menu_bar_height = 30
+        # Set height for your custom menu bar (reduced to 24 pixels for maximum compactness)
+        menu_bar_height = 24
         left_margin = 120  # Adjust left margin for floating effect
         rect = NSRect((left_margin, frame.size.height - menu_bar_height),
                       (frame.size.width - left_margin, menu_bar_height))
@@ -77,9 +77,9 @@ class OverlayMenuBar:
 
         # Add a placeholder button to the overlay
         button_width = 48  # Wider for more left border
-        button_height = menu_bar_height - 4
+        button_height = menu_bar_height - 2  # Reduced padding for maximum compactness
         button_x = 4  # Move closer to the left edge
-        button_y = 4
+        button_y = 1  # Minimal vertical padding
         button = NSButton.alloc().initWithFrame_(
             NSMakeRect(button_x, button_y, button_width, button_height))
         button.setTitle_("≡")
@@ -92,7 +92,7 @@ class OverlayMenuBar:
         # Set button background color to #23272F with a slightly lighter border for differentiation
         button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.137, 0.152, 0.184, 1.0)  # #23272F
         button.layer().setBackgroundColor_(button_bg.CGColor())
-        button.layer().setCornerRadius_(10)
+        button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
         # Add padding by increasing contentInsets (if available)
         if hasattr(button, 'setContentInsets_'):
             from Cocoa import NSEdgeInsetsMake
@@ -183,9 +183,9 @@ class OverlayMenuBar:
 
         # Add WhatsApp button next to the left menu button
         whatsapp_button_width = 36
-        whatsapp_button_height = menu_bar_height - 4
+        whatsapp_button_height = menu_bar_height - 2  # Reduced padding for maximum compactness
         whatsapp_button_x = button_x + button_width + 8  # Place to the right of the menu button
-        whatsapp_button_y = 4
+        whatsapp_button_y = 1  # Minimal vertical padding
         whatsapp_button = NSButton.alloc().initWithFrame_(
             NSMakeRect(whatsapp_button_x, whatsapp_button_y, whatsapp_button_width, whatsapp_button_height))
         whatsapp_button.setTitle_("🟢")  # Use WhatsApp emoji or set custom icon if desired
@@ -196,7 +196,7 @@ class OverlayMenuBar:
         whatsapp_button.setBordered_(False)
         whatsapp_button.setWantsLayer_(True)
         whatsapp_button.layer().setBackgroundColor_(button_bg.CGColor())
-        whatsapp_button.layer().setCornerRadius_(10)
+        whatsapp_button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
         attr_whatsapp = NSAttributedString.alloc().initWithString_attributes_(
             "🟢",
             NSDictionary.dictionaryWithObject_forKey_(
@@ -208,13 +208,13 @@ class OverlayMenuBar:
 
         # Create individual workspace buttons directly in the menu bar (XFCE style)
         workspace_button_width = 28
-        workspace_button_height = menu_bar_height - 4
+        workspace_button_height = menu_bar_height - 2  # Reduced padding for maximum compactness
         workspace_start_x = whatsapp_button_x + whatsapp_button_width + 8
         
         for i in range(self.workspace_count):
             workspace_x = workspace_start_x + i * (workspace_button_width + 4)
             workspace_button = NSButton.alloc().initWithFrame_(
-                NSMakeRect(workspace_x, 4, workspace_button_width, workspace_button_height))
+                NSMakeRect(workspace_x, 1, workspace_button_width, workspace_button_height))
             
             workspace_button.setTitle_(str(i + 1))
             workspace_button.setBezelStyle_(4)
@@ -223,8 +223,8 @@ class OverlayMenuBar:
             workspace_button.setButtonType_(0)
             workspace_button.setBordered_(False)
             workspace_button.setWantsLayer_(True)
-            workspace_button.layer().setCornerRadius_(8)
-            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(12))
+            workspace_button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
+            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(10))  # Smaller font for maximum compactness
             workspace_button.setTag_(i + 1)  # Store workspace number
             
             self.workspace_buttons.append(workspace_button)
@@ -235,9 +235,9 @@ class OverlayMenuBar:
 
         # Add a right-edge toggle-off button to the overlay
         close_button_width = 32
-        close_button_height = menu_bar_height - 8
+        close_button_height = menu_bar_height - 4  # Reduced padding for maximum compactness
         close_button_x = frame.size.width - close_button_width - 8 - left_margin
-        close_button_y = 4
+        close_button_y = 1  # Minimal vertical padding
         close_button = NSButton.alloc().initWithFrame_(
             NSMakeRect(close_button_x, close_button_y, close_button_width, close_button_height))
         close_button.setTitle_("→")
@@ -246,7 +246,7 @@ class OverlayMenuBar:
         close_button.setBordered_(False)
         close_button.setWantsLayer_(True)
         close_button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.18, 0.20, 0.24, 1.0).CGColor())
-        close_button.layer().setCornerRadius_(10)
+        close_button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
         attr_close = NSAttributedString.alloc().initWithString_attributes_(
             "→",
             NSDictionary.dictionaryWithObject_forKey_(
