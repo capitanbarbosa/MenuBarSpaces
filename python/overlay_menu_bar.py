@@ -441,90 +441,36 @@ class OverlayMenuBar:
         if sender.title() == "Quit":
             NSApplication.sharedApplication().terminate_(None)
 
+    def unminimize_and_focus_whatsapp(self):
+        """Use yabai to unminimize and focus the WhatsApp Web window if it exists."""
+        import subprocess
+        import json
+        try:
+            # Query all windows
+            result = subprocess.run(
+                ["yabai", "-m", "query", "--windows"],
+                capture_output=True, text=True, check=True
+            )
+            windows = json.loads(result.stdout)
+            # Find WhatsApp Web window
+            wa_windows = [w for w in windows if w.get("app") == "WhatsApp Web"]
+            if not wa_windows:
+                print("[WhatsApp/yabai] WhatsApp Web window not found.")
+                return
+            wa_id = wa_windows[0]["id"]
+            # Unminimize (if minimized)
+            subprocess.run(["yabai", "-m", "window", str(wa_id), "--toggle", "min"])
+            # Focus the window
+            subprocess.run(["yabai", "-m", "window", "--focus", str(wa_id)])
+            print("[WhatsApp/yabai] WhatsApp Web window should now be visible and focused.")
+        except Exception as e:
+            print(f"[WhatsApp/yabai] Error: {e}")
+
     def toggleWhatsAppComprehensive_(self, sender):
         """
-        Comprehensive WhatsApp toggle that tries multiple approaches and provides detailed logging.
-        This method should handle the minimized PWA issue more reliably.
+        Toggle WhatsApp Web window using yabai (unminimize and focus). AppleScript fallback removed.
         """
-        import subprocess
-        print("[WhatsApp Toggle Comprehensive] Invoked")
-        
-        # Comprehensive script that handles all scenarios
-        script = '''
-        tell application "System Events"
-            try
-                -- Check if WhatsApp Web is running
-                set waProc to first process whose name is "WhatsApp Web"
-                
-                if waProc exists then
-                    -- App is running, check if minimized
-                    set visibleWindows to windows of waProc whose visible is true
-                    
-                    if (count of visibleWindows) is 0 then
-                        -- App is minimized, try multiple restoration methods
-                        
-                        -- Method 1: Direct activation
-                        tell application "WhatsApp Web" to activate
-                        delay 0.5
-                        
-                        -- Method 2: Check if restoration worked
-                        set visibleWindowsAfter to windows of waProc whose visible is true
-                        if (count of visibleWindowsAfter) is 0 then
-                            -- Still minimized, try dock click
-                            try
-                                tell application "Dock" to click (first dock item whose name is "WhatsApp Web")
-                                delay 0.3
-                            on error
-                                -- Dock click failed, try alternative approach
-                                set frontmost of waProc to true
-                                delay 0.3
-                                tell application "WhatsApp Web" to activate
-                            end try
-                        end if
-                        
-                        -- Final check and frontmost setting
-                        set frontmost of waProc to true
-                        
-                    else
-                        -- App has visible windows, just bring to front
-                        set frontmost of waProc to true
-                    end if
-                    
-                else
-                    -- App is not running, launch it
-                    tell application "WhatsApp Web" to activate
-                end if
-                
-                return "Success"
-                
-            on error errMsg
-                -- Fallback: simple activation
-                try
-                    tell application "WhatsApp Web" to activate
-                    return "Fallback success"
-                on error fallbackErr
-                    return "All methods failed: " & errMsg & " | Fallback: " & fallbackErr
-                end try
-            end try
-        end tell
-        '''
-        
-        print("[WhatsApp Toggle Comprehensive] Running comprehensive script...")
-        try:
-            result = subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-            print(f"[WhatsApp Toggle Comprehensive] Result: {result.stdout.strip()}")
-            
-        except Exception as e:
-            print(f"[WhatsApp Toggle Comprehensive] Exception: {e}")
-            
-            # Ultimate fallback
-            print("[WhatsApp Toggle Comprehensive] Trying ultimate fallback...")
-            try:
-                fallback_result = subprocess.run(["osascript", "-e", 'tell application "WhatsApp Web" to activate'], 
-                                               check=True, capture_output=True, text=True)
-                print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback successful")
-            except Exception as ultimate_e:
-                print(f"[WhatsApp Toggle Comprehensive] Ultimate fallback failed: {ultimate_e}")
+        self.unminimize_and_focus_whatsapp()
 
     def updateWorkspaceButtons(self):
         """Update the appearance of workspace buttons to reflect current state (section style, green active, gray inactive)."""
