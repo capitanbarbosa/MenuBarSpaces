@@ -67,6 +67,12 @@ class OverlayMenuBar:
                     NSWindowCollectionBehaviorFullScreenAuxiliary)
         self.window.setCollectionBehavior_(behavior)
 
+        # Initialize workspace info early
+        self.workspace_count = 6
+        self.current_workspace = 1
+        self.workspace_buttons = []
+        self.updateWorkspaceInfo()
+
         # Add your custom drawing or views here
 
         # Add a placeholder button to the overlay
@@ -122,29 +128,6 @@ class OverlayMenuBar:
             0.13, 0.15, 0.18, 1.0))  # dark gray
         self.panel.setAlphaValue_(1.0)
         self.panel.orderOut_(None)
-
-        # Create pager panel (workspace switcher) - hidden by default
-        pager_panel_width = 200
-        pager_panel_height = 120
-        pager_panel_rect = NSMakeRect(
-            10, frame.size.height - menu_bar_height - pager_panel_height, pager_panel_width, pager_panel_height)
-        self.pager_panel = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
-            pager_panel_rect,
-            NSWindowStyleMaskBorderless,
-            NSBackingStoreBuffered,
-            False
-        )
-        self.pager_panel.setLevel_(NSStatusWindowLevel)
-        self.pager_panel.setOpaque_(True)
-        self.pager_panel.setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(
-            0.13, 0.15, 0.18, 1.0))  # dark gray
-        self.pager_panel.setAlphaValue_(1.0)
-        self.pager_panel.orderOut_(None)
-
-        # Initialize workspace info
-        self.workspace_count = 0
-        self.current_workspace = 0
-        self.updateWorkspaceInfo()
 
         # Add placeholder options to the panel with improved styling
         option_titles = ["Launch App", "Settings", "About", "Quit"]
@@ -223,30 +206,32 @@ class OverlayMenuBar:
         self.whatsapp_button = whatsapp_button
         self.window.contentView().addSubview_(whatsapp_button)
 
-        # Add Pager button (workspace switcher) next to WhatsApp button
-        pager_button_width = 36
-        pager_button_height = menu_bar_height - 4
-        pager_button_x = whatsapp_button_x + whatsapp_button_width + 8  # Place to the right of WhatsApp button
-        pager_button_y = 4
-        pager_button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(pager_button_x, pager_button_y, pager_button_width, pager_button_height))
-        pager_button.setTitle_("◢")  # Desktop/workspace icon
-        pager_button.setBezelStyle_(4)
-        pager_button.setAction_("togglePager:")
-        pager_button.setTarget_(self)
-        pager_button.setButtonType_(0)
-        pager_button.setBordered_(False)
-        pager_button.setWantsLayer_(True)
-        pager_button.layer().setBackgroundColor_(button_bg.CGColor())
-        pager_button.layer().setCornerRadius_(10)
-        attr_pager = NSAttributedString.alloc().initWithString_attributes_(
-            "◢",
-            NSDictionary.dictionaryWithObject_forKey_(
-                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.6, 0.8, 1.0, 1.0), NSForegroundColorAttributeName)
-        )
-        pager_button.setAttributedTitle_(attr_pager)
-        self.pager_button = pager_button
-        self.window.contentView().addSubview_(pager_button)
+        # Create individual workspace buttons directly in the menu bar (XFCE style)
+        workspace_button_width = 28
+        workspace_button_height = menu_bar_height - 4
+        workspace_start_x = whatsapp_button_x + whatsapp_button_width + 8
+        
+        for i in range(self.workspace_count):
+            workspace_x = workspace_start_x + i * (workspace_button_width + 4)
+            workspace_button = NSButton.alloc().initWithFrame_(
+                NSMakeRect(workspace_x, 4, workspace_button_width, workspace_button_height))
+            
+            workspace_button.setTitle_(str(i + 1))
+            workspace_button.setBezelStyle_(4)
+            workspace_button.setAction_("switchToWorkspace:")
+            workspace_button.setTarget_(self)
+            workspace_button.setButtonType_(0)
+            workspace_button.setBordered_(False)
+            workspace_button.setWantsLayer_(True)
+            workspace_button.layer().setCornerRadius_(8)
+            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(12))
+            workspace_button.setTag_(i + 1)  # Store workspace number
+            
+            self.workspace_buttons.append(workspace_button)
+            self.window.contentView().addSubview_(workspace_button)
+
+        # Update workspace button appearances
+        self.updateWorkspaceButtons()
 
         # Add a right-edge toggle-off button to the overlay
         close_button_width = 32
@@ -276,6 +261,9 @@ class OverlayMenuBar:
         self.window.orderFrontRegardless()
         self.hotkey_listener_thread = None
         self.setup_hotkey_listener()
+        
+        # Start periodic workspace state updates
+        self.setup_workspace_monitor()
 
     def setup_hotkey_listener(self):
         if not check_accessibility_permissions():
@@ -295,7 +283,7 @@ class OverlayMenuBar:
                         # Also hide the panel if open
                         self.panel.orderOut_(None)
                         # Also hide the pager panel if open
-                        self.pager_panel.orderOut_(None)
+                        # self.pager_panel.orderOut_(None) # This line is removed as pager_panel is no longer initialized
                     else:
                         self.window.orderFrontRegardless()
             except Exception as e:
@@ -305,6 +293,27 @@ class OverlayMenuBar:
         t = threading.Thread(target=listener.start, daemon=True)
         t.start()
         self.hotkey_listener_thread = t
+
+    def setup_workspace_monitor(self):
+        """Set up a background thread to monitor workspace changes."""
+        def workspace_monitor():
+            import time
+            while True:
+                try:
+                    old_workspace = self.current_workspace
+                    self.updateWorkspaceInfo()
+                    if old_workspace != self.current_workspace:
+                        print(f"[Pager Monitor] Workspace changed from {old_workspace} to {self.current_workspace}")
+                        # Update buttons on main thread
+                        from PyObjCTools.AppHelper import callAfter
+                        callAfter(self.updateWorkspaceButtons)
+                    time.sleep(2)  # Check every 2 seconds
+                except Exception as e:
+                    print(f"[Pager Monitor] Error: {e}")
+                    time.sleep(5)  # Wait longer on error
+        
+        monitor_thread = threading.Thread(target=workspace_monitor, daemon=True)
+        monitor_thread.start()
 
     def togglePanel_(self, sender):
         # Always position the panel below the button and toggle reliably
@@ -352,7 +361,7 @@ class OverlayMenuBar:
         
         # Also hide panels
         self.panel.orderOut_(None)
-        self.pager_panel.orderOut_(None)
+        # self.pager_panel.orderOut_(None) # This line is removed as pager_panel is no longer initialized
 
     def panelOptionClicked_(self, sender):
         # Placeholder: print which option was clicked
@@ -651,86 +660,35 @@ class OverlayMenuBar:
         self.current_workspace = 1
         print(f"[Pager] All methods failed, using fallback: {self.workspace_count} workspaces, current: {self.current_workspace}")
 
-    def createWorkspaceButtons(self):
-        """Create buttons for each workspace in the pager panel."""
-        # Clear existing buttons
-        for subview in self.pager_panel.contentView().subviews():
-            subview.removeFromSuperview()
-        
-        # Create workspace buttons in a grid layout
-        button_size = 40
-        margin = 10
-        buttons_per_row = 4
-        
-        for i in range(self.workspace_count):
-            row = i // buttons_per_row
-            col = i % buttons_per_row
+    def updateWorkspaceButtons(self):
+        """Update the appearance of workspace buttons to reflect current state."""
+        for i, button in enumerate(self.workspace_buttons):
+            workspace_num = i + 1
             
-            x = margin + col * (button_size + 5)
-            y = self.pager_panel.frame().size.height - margin - (row + 1) * (button_size + 5)
-            
-            workspace_button = NSButton.alloc().initWithFrame_(
-                NSMakeRect(x, y, button_size, button_size))
-            
-            # Set button title (workspace number)
-            workspace_button.setTitle_(str(i + 1))
-            workspace_button.setBezelStyle_(4)
-            workspace_button.setTarget_(self)
-            workspace_button.setAction_("switchToWorkspace:")
-            workspace_button.setFont_(NSFont.boldSystemFontOfSize_(14))
-            workspace_button.setWantsLayer_(True)
-            
-            # Set button appearance based on current workspace
-            if i + 1 == self.current_workspace:
-                # Current workspace - highlighted
-                workspace_button.layer().setBackgroundColor_(
+            if workspace_num == self.current_workspace:
+                # Current workspace - highlighted with blue background
+                button.layer().setBackgroundColor_(
                     NSColor.colorWithCalibratedRed_green_blue_alpha_(0.2, 0.6, 0.9, 1.0).CGColor())
                 text_color = NSColor.whiteColor()
+                # Add a subtle border for the active workspace
+                button.layer().setBorderWidth_(1.0)
+                button.layer().setBorderColor_(
+                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.4, 0.7, 1.0, 1.0).CGColor())
             else:
-                # Other workspaces - normal
-                workspace_button.layer().setBackgroundColor_(
+                # Inactive workspace - darker background
+                button.layer().setBackgroundColor_(
+                    NSColor.colorWithCalibratedRed_green_blue_alpha_(0.18, 0.20, 0.24, 1.0).CGColor())
+                text_color = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.7, 0.7, 0.7, 1.0)
+                button.layer().setBorderWidth_(0.5)
+                button.layer().setBorderColor_(
                     NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.3, 0.3, 1.0).CGColor())
-                text_color = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.9, 0.9, 0.9, 1.0)
-            
-            workspace_button.layer().setCornerRadius_(8)
-            workspace_button.setBordered_(False)
             
             # Set button title color
             attr_title = NSAttributedString.alloc().initWithString_attributes_(
-                str(i + 1),
+                str(workspace_num),
                 NSDictionary.dictionaryWithObject_forKey_(text_color, NSForegroundColorAttributeName)
             )
-            workspace_button.setAttributedTitle_(attr_title)
-            
-            # Store workspace number in button for identification
-            workspace_button.setTag_(i + 1)
-            
-            self.pager_panel.contentView().addSubview_(workspace_button)
-
-    def togglePager_(self, sender):
-        """Toggle the workspace pager panel."""
-        # Update workspace info before showing
-        print("[Pager] Opening pager panel...")
-        self.updateWorkspaceInfo()
-        
-        if self.pager_panel.isVisible():
-            self.pager_panel.orderOut_(None)
-        else:
-            # Hide other panels first
-            self.panel.orderOut_(None)
-            
-            # Position pager panel below the pager button
-            window_frame = self.window.frame()
-            pager_button_frame = self.pager_button.frame()
-            pager_panel_frame = self.pager_panel.frame()
-            x = window_frame.origin.x + pager_button_frame.origin.x
-            y = window_frame.origin.y - pager_panel_frame.size.height
-            self.pager_panel.setFrameOrigin_((x, y))
-            
-            # Create workspace buttons
-            self.createWorkspaceButtons()
-            
-            self.pager_panel.orderFrontRegardless()
+            button.setAttributedTitle_(attr_title)
 
     def switchToWorkspace_(self, sender):
         """Switch to the selected workspace using AppleScript."""
@@ -742,6 +700,9 @@ class OverlayMenuBar:
         # Update our tracking of current workspace (optimistically)
         self.current_workspace = workspace_number
         print(f"[Pager] Updated current workspace to: {self.current_workspace}")
+
+        # Update button appearances immediately for responsive feedback
+        self.updateWorkspaceButtons()
 
         script = f'''
         tell application "System Events"
@@ -784,14 +745,14 @@ class OverlayMenuBar:
                 self.current_workspace = workspace_number
                 print(f"[Pager] Fallback: Forcing current workspace to {workspace_number}")
 
-            # Update pager UI
-            self.createWorkspaceButtons()
-
-            # Hide the pager panel after switching
-            self.pager_panel.orderOut_(None)
+            # Update button appearances to reflect actual state
+            self.updateWorkspaceButtons()
 
         except Exception as e:
             print(f"[Pager] Error switching workspace: {e}")
+            # Revert button appearance on error
+            self.updateWorkspaceInfo()
+            self.updateWorkspaceButtons()
 
 
 if __name__ == "__main__":
