@@ -270,33 +270,11 @@ class OverlayMenuBar:
         self.setup_workspace_monitor()
 
     def resetToFirstDesktop(self):
-        """Reset to desktop 1 by simulating multiple left swipes."""
-        import subprocess
-        import time
-        
-        print("[Pager] Resetting to desktop 1...")
-        
-        # Simulate 20 desktop left swipes to ensure we're at desktop 1
-        script = '''
-        tell application "System Events"
-            repeat 20 times
-                key code 123 using {control down}  -- Ctrl+Left Arrow
-                delay 0.05
-            end repeat
-        end tell
-        '''
-        
-        try:
-            subprocess.run(["osascript", "-e", script], check=True, capture_output=True, text=True)
-            self.current_workspace = 1
-            print("[Pager] Reset to desktop 1 complete")
-            
-            # Update button appearance
-            from PyObjCTools.AppHelper import callAfter
-            callAfter(self.updateWorkspaceButtons)
-            
-        except Exception as e:
-            print(f"[Pager] Error resetting to desktop 1: {e}")
+        """No-op: overlay is already running; no desktop switching or activation needed."""
+        print("[Pager] Overlay app is running (no desktop switching, no activation needed).")
+        # Optionally, update workspace buttons (if needed)
+        from PyObjCTools.AppHelper import callAfter
+        callAfter(self.updateWorkspaceButtons)
 
     def switchToWorkspaceSimple(self, target_workspace):
         """Switch to target workspace using simple left/right navigation."""
