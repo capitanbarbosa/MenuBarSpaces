@@ -39,8 +39,9 @@ class OverlayMenuBar:
         frame = screen.frame()
         # Set height for your custom menu bar (e.g., 30 pixels)
         menu_bar_height = 30
-        rect = NSRect((0, frame.size.height - menu_bar_height),
-                      (frame.size.width, menu_bar_height))
+        left_margin = 150  # Add left margin for floating effect
+        rect = NSRect((left_margin, frame.size.height - menu_bar_height),
+                      (frame.size.width - left_margin, menu_bar_height))
 
         self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             rect,
@@ -250,7 +251,7 @@ class OverlayMenuBar:
         # Add a right-edge toggle-off button to the overlay
         close_button_width = 32
         close_button_height = menu_bar_height - 8
-        close_button_x = frame.size.width - close_button_width - 8
+        close_button_x = frame.size.width - close_button_width - 8 - left_margin
         close_button_y = 4
         close_button = NSButton.alloc().initWithFrame_(
             NSMakeRect(close_button_x, close_button_y, close_button_width, close_button_height))
