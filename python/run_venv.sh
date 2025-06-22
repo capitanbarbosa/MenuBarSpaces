@@ -2,6 +2,6 @@
 # Exit on error
 set -e
 # Activate the virtual environment
-source ./venv/bin/activate
+source /Users/wiz/coding/backburner/Active-Top-menu-bar_mac/python/venv/bin/activate
 # Run your app
-python overlay_menu_bar.py
+python /Users/wiz/coding/backburner/Active-Top-menu-bar_mac/python/overlay_menu_bar.py
