@@ -76,42 +76,74 @@ class OverlayMenuBar:
         # self.current_workspace = 1  # We'll always start at desktop 1
         # self.workspace_buttons = []
         
-        # Add your custom drawing or views here
+        # --- Left Buttons Section ---
 
-        # Add a placeholder button to the overlay
-        button_width = 48  # Wider for more left border
-        button_height = menu_bar_height - 2  # Reduced padding for maximum compactness
-        button_x = 4  # Move closer to the left edge
-        button_y = 1  # Minimal vertical padding
-        button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(button_x, button_y, button_width, button_height))
-        button.setTitle_("≡")
-        button.setBezelStyle_(4)  # NSBezelStyleTexturedRounded
-        button.setAction_("togglePanel:")
-        button.setTarget_(self)
-        button.setButtonType_(0)  # NSMomentaryLightButton
-        button.setBordered_(False)
-        button.setWantsLayer_(True)
-        # Set button background color to #23272F with a slightly lighter border for differentiation
-        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)  # #222222
-        button.layer().setBackgroundColor_(button_bg.CGColor())
-        button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
-        # Add padding by increasing contentInsets (if available)
-        if hasattr(button, 'setContentInsets_'):
-            from Cocoa import NSEdgeInsetsMake
-            button.setContentInsets_(NSEdgeInsetsMake(6, 20, 6, 12))  # More left padding
-        # Add a subtle border to help differentiate from background
-        button.layer().setBorderWidth_(1.5)
-        button.layer().setBorderColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.22, 0.25, 0.32, 1.0).CGColor())
-        # Set button text color to #E6EAF0 (Light Gray)
+        # Define button sizes and spacing
+        hamburger_button_width = 48
+        wizlabs_button_width = 70
+        gpt_button_width = 48
+        whatsapp_button_width = 36
+        gmail_button_width = 36
+        button_spacing = 8
+        container_padding = 4
+
+        # Calculate container dimensions
+        all_buttons_width = (hamburger_button_width + wizlabs_button_width + gpt_button_width + 
+                             whatsapp_button_width + gmail_button_width)
+        total_spacing = button_spacing * 4
+        total_padding = container_padding * 2
+        container_width = all_buttons_width + total_spacing + total_padding
+        container_height = menu_bar_height - 2
+        container_x = 4  # Start container at the far left
+        container_y = 1
+
+        # Create the container view
+        self.left_buttons_container = NSView.alloc().initWithFrame_(NSMakeRect(container_x, container_y, container_width, container_height))
+        self.left_buttons_container.setWantsLayer_(True)
+        container_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0) # #222222
+        self.left_buttons_container.layer().setBackgroundColor_(container_bg.CGColor())
+        self.left_buttons_container.layer().setCornerRadius_(0)
+        self.window.contentView().addSubview_(self.left_buttons_container)
+        
+        # Add buttons to the container view
+        button_y_in_container = 0
+        button_height_in_container = container_height
+        current_x_in_container = container_padding
+
+        # Hamburger Menu Button (now inside the container)
+        self.button = NSButton.alloc().initWithFrame_(
+            NSMakeRect(current_x_in_container, button_y_in_container, hamburger_button_width, button_height_in_container))
+        self.button.setTitle_("≡")
+        self.button.setBezelStyle_(0)
+        self.button.setBordered_(False)
+        self.button.setWantsLayer_(True)
+        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
         attr_title = NSAttributedString.alloc().initWithString_attributes_(
             "≡",
-            NSDictionary.dictionaryWithObject_forKey_(
-                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.902, 0.918, 0.941, 1.0), NSForegroundColorAttributeName)
+            NSDictionary.dictionaryWithObject_forKey_(NSColor.whiteColor(), NSForegroundColorAttributeName)
         )
-        button.setAttributedTitle_(attr_title)
-        self.button = button  # Keep a reference
-        self.window.contentView().addSubview_(button)
+        self.button.setAttributedTitle_(attr_title)
+        self.button.setAction_("togglePanel:")
+        self.button.setTarget_(self)
+        self.left_buttons_container.addSubview_(self.button)
+        current_x_in_container += hamburger_button_width + button_spacing
+        
+        # Wizlabs Button
+        self.wizlabs_button = WizlabsButton(self.left_buttons_container, current_x_in_container, button_y_in_container, wizlabs_button_width, button_height_in_container)
+        current_x_in_container += wizlabs_button_width + button_spacing
+
+        # GPT Button
+        self.gpt_button = GPTButton(self.left_buttons_container, current_x_in_container, button_y_in_container, gpt_button_width, button_height_in_container)
+        current_x_in_container += gpt_button_width + button_spacing
+
+        # WhatsApp Button
+        self.whatsapp_button = WhatsAppButton(self.left_buttons_container, current_x_in_container, button_y_in_container, whatsapp_button_width, button_height_in_container)
+        current_x_in_container += whatsapp_button_width + button_spacing
+
+        # Gmail Button
+        self.gmail_button = GmailButton(self.left_buttons_container, current_x_in_container, button_y_in_container, gmail_button_width, button_height_in_container)
+
+        # --- End Left Buttons Section ---
 
         # Create a placeholder panel (hidden by default)
         panel_width = 300
@@ -184,34 +216,10 @@ class OverlayMenuBar:
         self.status_item.button().setTarget_(self)
         self.status_item.button().setAction_("toggleOverlay:")
 
-        # Button properties
-        button_height = menu_bar_height - 2
-        button_y = 1
-        
-        # Wizlabs Button
-        wizlabs_button_width = 70
-        wizlabs_button_x = button_x + button_width + 8
-        self.wizlabs_button = WizlabsButton(self.window.contentView(), wizlabs_button_x, button_y, wizlabs_button_width, button_height)
-
-        # GPT Button
-        gpt_button_width = 48
-        gpt_button_x = wizlabs_button_x + wizlabs_button_width + 8
-        self.gpt_button = GPTButton(self.window.contentView(), gpt_button_x, button_y, gpt_button_width, button_height)
-
-        # WhatsApp Button
-        whatsapp_button_width = 36
-        whatsapp_button_x = gpt_button_x + gpt_button_width + 8
-        self.whatsapp_button = WhatsAppButton(self.window.contentView(), whatsapp_button_x, button_y, whatsapp_button_width, button_height)
-
-        # Gmail Button
-        gmail_button_width = 36
-        gmail_button_x = whatsapp_button_x + whatsapp_button_width + 8
-        self.gmail_button = GmailButton(self.window.contentView(), gmail_button_x, button_y, gmail_button_width, button_height)
-
         # Create individual workspace buttons directly in the menu bar (section style)
         workspace_button_width = 64  # Wider for section look
         workspace_button_height = menu_bar_height - 2
-        workspace_start_x = gmail_button_x + gmail_button_width + 8
+        workspace_start_x = container_x + container_width + 8
         section_gap = 0  # No gap for section/segmented look
         
         self.desktop_switcher = DesktopSwitcher(self.window.contentView(), workspace_start_x, menu_bar_height)

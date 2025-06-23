@@ -47,7 +47,7 @@ class DesktopSwitcher:
             workspace_button.setTag_(i + 1)
             if hasattr(workspace_button, 'setContentInsets_'):
                 workspace_button.setContentInsets_(NSEdgeInsetsMake(4, 12, 4, 12))
-            workspace_button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0).CGColor())
+            workspace_button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.094, 0.094, 0.094, 1.0).CGColor())
             self.workspace_buttons.append(workspace_button)
             self.parent_view.addSubview_(workspace_button)
 
@@ -173,8 +173,8 @@ class DesktopSwitcher:
                 text_color = NSColor.whiteColor()
                 button.layer().setBorderWidth_(0)
             else:
-                # Inactive workspace - #222222
-                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0).CGColor())  # #222222
+                # Inactive workspace - #181818
+                button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.094, 0.094, 0.094, 1.0).CGColor())  # #181818
                 text_color = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.7, 0.7, 0.7, 1.0)
                 button.layer().setBorderWidth_(0)
             # Set button title color

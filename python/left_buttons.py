@@ -8,16 +8,13 @@ class GPTButton:
             NSMakeRect(x, y, width, height)
         )
         self.button.setTitle_("GPT")
-        self.button.setBezelStyle_(4)  # NSBezelStyleTexturedRounded
-        self.button.setAction_("openGPT:")
-        self.button.setTarget_(self)
-        self.button.setButtonType_(0)  # NSMomentaryLightButton
+        self.button.setBezelStyle_(0)
         self.button.setBordered_(False)
         self.button.setWantsLayer_(True)
-
-        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)  # #222222
-        self.button.layer().setBackgroundColor_(button_bg.CGColor())
-        self.button.layer().setCornerRadius_(4)
+        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
+        self.button.setAction_("openGPT:")
+        self.button.setTarget_(self)
+        self.button.setButtonType_(0)
 
         attr_title = NSAttributedString.alloc().initWithString_attributes_(
             "GPT",
@@ -26,7 +23,6 @@ class GPTButton:
             )
         )
         self.button.setAttributedTitle_(attr_title)
-
         parent_view.addSubview_(self.button)
 
     def openGPT_(self, sender):
@@ -38,16 +34,13 @@ class WizlabsButton:
             NSMakeRect(x, y, width, height)
         )
         self.button.setTitle_("Wizlabs")
-        self.button.setBezelStyle_(4)  # NSBezelStyleTexturedRounded
-        self.button.setAction_("openWizlabs:")
-        self.button.setTarget_(self)
-        self.button.setButtonType_(0)  # NSMomentaryLightButton
+        self.button.setBezelStyle_(0)
         self.button.setBordered_(False)
         self.button.setWantsLayer_(True)
-
-        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)  # #222222
-        self.button.layer().setBackgroundColor_(button_bg.CGColor())
-        self.button.layer().setCornerRadius_(4)
+        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
+        self.button.setAction_("openWizlabs:")
+        self.button.setTarget_(self)
+        self.button.setButtonType_(0)
 
         attr_title = NSAttributedString.alloc().initWithString_attributes_(
             "Wizlabs",
@@ -56,7 +49,6 @@ class WizlabsButton:
             )
         )
         self.button.setAttributedTitle_(attr_title)
-
         parent_view.addSubview_(self.button)
 
     def openWizlabs_(self, sender):
@@ -67,15 +59,12 @@ class WhatsAppButton:
         self.button = NSButton.alloc().initWithFrame_(
             NSMakeRect(x, y, width, height)
         )
-        self.button.setBezelStyle_(4)
-        self.button.setAction_("toggleWhatsApp:")
-        self.button.setTarget_(self)
-        self.button.setButtonType_(0)
+        self.button.setBezelStyle_(0)
         self.button.setBordered_(False)
         self.button.setWantsLayer_(True)
-        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)
-        self.button.layer().setBackgroundColor_(button_bg.CGColor())
-        self.button.layer().setCornerRadius_(4)
+        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
+        self.button.setAction_("toggleWhatsApp:")
+        self.button.setTarget_(self)
         
         icon = NSImage.alloc().initWithContentsOfFile_("whatsapp.png")
         if icon:
@@ -114,15 +103,12 @@ class GmailButton:
         self.button = NSButton.alloc().initWithFrame_(
             NSMakeRect(x, y, width, height)
         )
-        self.button.setBezelStyle_(4)
-        self.button.setAction_("openGmail:")
-        self.button.setTarget_(self)
-        self.button.setButtonType_(0)
+        self.button.setBezelStyle_(0)
         self.button.setBordered_(False)
         self.button.setWantsLayer_(True)
-        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)
-        self.button.layer().setBackgroundColor_(button_bg.CGColor())
-        self.button.layer().setCornerRadius_(4)
+        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
+        self.button.setAction_("openGmail:")
+        self.button.setTarget_(self)
         
         icon = NSImage.alloc().initWithContentsOfFile_("gmail.png")
         if icon:
