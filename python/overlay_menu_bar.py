@@ -314,6 +314,7 @@ class OverlayMenuBar:
             
         except Exception as e:
             print(f"[Pager] Error switching workspace: {e}")
+            check_accessibility_permissions()
             # Revert on error
             self.detectMissionControlReset()
 
