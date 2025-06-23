@@ -1,5 +1,6 @@
 import webbrowser
-from Cocoa import NSButton, NSMakeRect, NSColor, NSAttributedString, NSDictionary, NSForegroundColorAttributeName
+import subprocess
+from Cocoa import NSButton, NSMakeRect, NSColor, NSAttributedString, NSDictionary, NSForegroundColorAttributeName, NSImage, NSSize
 
 class GPTButton:
     def __init__(self, parent_view, x, y, width, height):
@@ -59,4 +60,76 @@ class WizlabsButton:
         parent_view.addSubview_(self.button)
 
     def openWizlabs_(self, sender):
-        webbrowser.open("https://wizlabs.co") 
+        webbrowser.open("https://wizlabs.co")
+
+class WhatsAppButton:
+    def __init__(self, parent_view, x, y, width, height):
+        self.button = NSButton.alloc().initWithFrame_(
+            NSMakeRect(x, y, width, height)
+        )
+        self.button.setBezelStyle_(4)
+        self.button.setAction_("toggleWhatsApp:")
+        self.button.setTarget_(self)
+        self.button.setButtonType_(0)
+        self.button.setBordered_(False)
+        self.button.setWantsLayer_(True)
+        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)
+        self.button.layer().setBackgroundColor_(button_bg.CGColor())
+        self.button.layer().setCornerRadius_(4)
+        
+        icon = NSImage.alloc().initWithContentsOfFile_("whatsapp.png")
+        if icon:
+            icon.setSize_(NSSize(27, 20))
+            self.button.setImage_(icon)
+            
+        parent_view.addSubview_(self.button)
+
+    def toggleWhatsApp_(self, sender):
+        script_bring_to_front = '''
+        tell application "System Events"
+            set process_list to name of every process
+            if "WhatsApp" is in process_list then
+                tell application "WhatsApp"
+                    activate
+                end tell
+                return "activated"
+            else
+                return "not running"
+            end if
+        end tell
+        '''
+        try:
+            result = subprocess.run(['osascript', '-e', script_bring_to_front], capture_output=True, text=True, check=True)
+            if result.stdout.strip() == "not running":
+                subprocess.run(['open', '-a', 'WhatsApp'], check=True)
+        except Exception as e:
+            print(f"Error in toggleWhatsApp: {e}")
+            try:
+                subprocess.run(['open', '-a', 'WhatsApp'], check=True)
+            except Exception as e_open:
+                print(f"Fallback launch of WhatsApp also failed: {e_open}")
+
+class GmailButton:
+    def __init__(self, parent_view, x, y, width, height):
+        self.button = NSButton.alloc().initWithFrame_(
+            NSMakeRect(x, y, width, height)
+        )
+        self.button.setBezelStyle_(4)
+        self.button.setAction_("openGmail:")
+        self.button.setTarget_(self)
+        self.button.setButtonType_(0)
+        self.button.setBordered_(False)
+        self.button.setWantsLayer_(True)
+        button_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0)
+        self.button.layer().setBackgroundColor_(button_bg.CGColor())
+        self.button.layer().setCornerRadius_(4)
+        
+        icon = NSImage.alloc().initWithContentsOfFile_("gmail.png")
+        if icon:
+            icon.setSize_(NSSize(20, 20))
+            self.button.setImage_(icon)
+
+        parent_view.addSubview_(self.button)
+
+    def openGmail_(self, sender):
+        webbrowser.open("https://mail.google.com") 

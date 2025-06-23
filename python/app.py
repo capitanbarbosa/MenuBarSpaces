@@ -14,7 +14,7 @@ except ImportError:
     keyboard = None  # Will show warning if not installed
 
 from desktop_switcher import DesktopSwitcher
-from left_buttons import GPTButton, WizlabsButton
+from left_buttons import GPTButton, WizlabsButton, WhatsAppButton, GmailButton
 
 
 def check_accessibility_permissions():
@@ -184,44 +184,34 @@ class OverlayMenuBar:
         self.status_item.button().setTarget_(self)
         self.status_item.button().setAction_("toggleOverlay:")
 
-        # Add WhatsApp button next to the left menu button
-        whatsapp_button_width = 36
-        whatsapp_button_height = menu_bar_height - 2  # Reduced padding for maximum compactness
-        whatsapp_button_x = button_x + button_width + 8  # Place to the right of the menu button
-        whatsapp_button_y = 1  # Minimal vertical padding
-        whatsapp_button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(whatsapp_button_x, whatsapp_button_y, whatsapp_button_width, whatsapp_button_height))
-        whatsapp_button.setTitle_("🟢")  # Use WhatsApp emoji or set custom icon if desired
-        whatsapp_button.setBezelStyle_(4)
-        whatsapp_button.setAction_("toggleWhatsAppComprehensive:")
-        whatsapp_button.setTarget_(self)
-        whatsapp_button.setButtonType_(0)
-        whatsapp_button.setBordered_(False)
-        whatsapp_button.setWantsLayer_(True)
-        whatsapp_button.layer().setBackgroundColor_(button_bg.CGColor())
-        whatsapp_button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
-        attr_whatsapp = NSAttributedString.alloc().initWithString_attributes_(
-            "🟢",
-            NSDictionary.dictionaryWithObject_forKey_(
-                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.9, 0.3, 1.0), NSForegroundColorAttributeName)
-        )
-        whatsapp_button.setAttributedTitle_(attr_whatsapp)
-        self.whatsapp_button = whatsapp_button
-        self.window.contentView().addSubview_(whatsapp_button)
-
-        # Add GPT and Wizlabs buttons
-        gpt_button_width = 48
-        gpt_button_x = whatsapp_button_x + whatsapp_button_width + 8
-        self.gpt_button = GPTButton(self.window.contentView(), gpt_button_x, 1, gpt_button_width, menu_bar_height - 2)
-
+        # Button properties
+        button_height = menu_bar_height - 2
+        button_y = 1
+        
+        # Wizlabs Button
         wizlabs_button_width = 70
-        wizlabs_button_x = gpt_button_x + gpt_button_width + 8
-        self.wizlabs_button = WizlabsButton(self.window.contentView(), wizlabs_button_x, 1, wizlabs_button_width, menu_bar_height - 2)
+        wizlabs_button_x = button_x + button_width + 8
+        self.wizlabs_button = WizlabsButton(self.window.contentView(), wizlabs_button_x, button_y, wizlabs_button_width, button_height)
+
+        # GPT Button
+        gpt_button_width = 48
+        gpt_button_x = wizlabs_button_x + wizlabs_button_width + 8
+        self.gpt_button = GPTButton(self.window.contentView(), gpt_button_x, button_y, gpt_button_width, button_height)
+
+        # WhatsApp Button
+        whatsapp_button_width = 36
+        whatsapp_button_x = gpt_button_x + gpt_button_width + 8
+        self.whatsapp_button = WhatsAppButton(self.window.contentView(), whatsapp_button_x, button_y, whatsapp_button_width, button_height)
+
+        # Gmail Button
+        gmail_button_width = 36
+        gmail_button_x = whatsapp_button_x + whatsapp_button_width + 8
+        self.gmail_button = GmailButton(self.window.contentView(), gmail_button_x, button_y, gmail_button_width, button_height)
 
         # Create individual workspace buttons directly in the menu bar (section style)
         workspace_button_width = 64  # Wider for section look
         workspace_button_height = menu_bar_height - 2
-        workspace_start_x = wizlabs_button_x + wizlabs_button_width + 8
+        workspace_start_x = gmail_button_x + gmail_button_width + 8
         section_gap = 0  # No gap for section/segmented look
         
         self.desktop_switcher = DesktopSwitcher(self.window.contentView(), workspace_start_x, menu_bar_height)
@@ -356,137 +346,6 @@ class OverlayMenuBar:
         print(f"Clicked: {sender.title()}")
         if sender.title() == "Quit":
             NSApplication.sharedApplication().terminate_(None)
-
-    def unminimize_and_focus_whatsapp(self):
-        """Use yabai to unminimize and focus the WhatsApp Web window if it exists."""
-        import subprocess
-        import json
-        import os
-        
-        # Try different possible paths for yabai
-        yabai_paths = [
-            "/opt/homebrew/bin/yabai",
-            "/usr/local/bin/yabai",
-            "yabai"  # fallback to PATH
-        ]
-        
-        yabai_cmd = None
-        for path in yabai_paths:
-            if os.path.exists(path) or path == "yabai":
-                yabai_cmd = path
-                break
-        
-        if not yabai_cmd:
-            print("[WhatsApp/yabai] yabai not found in common locations")
-            return
-            
-        try:
-            # Query all windows
-            result = subprocess.run(
-                [yabai_cmd, "-m", "query", "--windows"],
-                capture_output=True, text=True, check=True
-            )
-            windows = json.loads(result.stdout)
-            # Find WhatsApp Web window
-            wa_windows = [w for w in windows if w.get("app") == "WhatsApp Web"]
-            if not wa_windows:
-                print("[WhatsApp/yabai] WhatsApp Web window not found.")
-                return
-            wa_id = wa_windows[0]["id"]
-            # Unminimize (if minimized)
-            subprocess.run([yabai_cmd, "-m", "window", str(wa_id), "--toggle", "min"])
-            # Focus the window
-            subprocess.run([yabai_cmd, "-m", "window", "--focus", str(wa_id)])
-            print("[WhatsApp/yabai] WhatsApp Web window should now be visible and focused.")
-        except Exception as e:
-            print(f"[WhatsApp/yabai] Error: {e}")
-
-    def is_whatsapp_minimized(self):
-        """Return True if WhatsApp Web window is minimized, False if not, None if not found."""
-        import subprocess
-        import json
-        import os
-        
-        # Try different possible paths for yabai
-        yabai_paths = [
-            "/opt/homebrew/bin/yabai",
-            "/usr/local/bin/yabai",
-            "yabai"  # fallback to PATH
-        ]
-        
-        yabai_cmd = None
-        for path in yabai_paths:
-            if os.path.exists(path) or path == "yabai":
-                yabai_cmd = path
-                break
-        
-        if not yabai_cmd:
-            print("[WhatsApp/yabai] yabai not found in common locations")
-            return None
-            
-        try:
-            result = subprocess.run(
-                [yabai_cmd, "-m", "query", "--windows"],
-                capture_output=True, text=True, check=True
-            )
-            windows = json.loads(result.stdout)
-            wa_windows = [w for w in windows if w.get("app") == "WhatsApp Web"]
-            if not wa_windows:
-                return None
-            return wa_windows[0].get("minimized", 0) == 1
-        except Exception as e:
-            print(f"[WhatsApp/yabai] Error checking minimized state: {e}")
-            return None
-
-    def toggleWhatsAppComprehensive_(self, sender):
-        """
-        Toggle WhatsApp Web window using yabai: minimize if visible, unminimize+focus if minimized.
-        """
-        import subprocess
-        import json
-        import os
-        
-        # Try different possible paths for yabai
-        yabai_paths = [
-            "/opt/homebrew/bin/yabai",
-            "/usr/local/bin/yabai",
-            "yabai"  # fallback to PATH
-        ]
-        
-        yabai_cmd = None
-        for path in yabai_paths:
-            if os.path.exists(path) or path == "yabai":
-                yabai_cmd = path
-                break
-        
-        if not yabai_cmd:
-            print("[WhatsApp/yabai] yabai not found in common locations")
-            return
-            
-        try:
-            # Query all windows
-            result = subprocess.run(
-                [yabai_cmd, "-m", "query", "--windows"],
-                capture_output=True, text=True, check=True
-            )
-            windows = json.loads(result.stdout)
-            wa_windows = [w for w in windows if w.get("app") == "WhatsApp Web"]
-            if not wa_windows:
-                print("[WhatsApp/yabai] WhatsApp Web window not found.")
-                return
-            wa_id = wa_windows[0]["id"]
-            is_minimized = wa_windows[0].get("minimized", 0) == 1
-            if is_minimized:
-                # Unminimize and focus
-                subprocess.run([yabai_cmd, "-m", "window", str(wa_id), "--toggle", "min"])
-                subprocess.run([yabai_cmd, "-m", "window", "--focus", str(wa_id)])
-                print("[WhatsApp/yabai] WhatsApp Web window unminimized and focused.")
-            else:
-                # Minimize
-                subprocess.run([yabai_cmd, "-m", "window", str(wa_id), "--toggle", "min"])
-                print("[WhatsApp/yabai] WhatsApp Web window minimized.")
-        except Exception as e:
-            print(f"[WhatsApp/yabai] Error: {e}")
 
 
 if __name__ == "__main__":
