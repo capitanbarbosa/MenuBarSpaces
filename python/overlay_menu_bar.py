@@ -327,15 +327,36 @@ class OverlayMenuBar:
         """Query the current active workspace (desktop/space) using yabai."""
         import subprocess
         import json
+        import os
+        
+        # Try different possible paths for yabai
+        yabai_paths = [
+            "/opt/homebrew/bin/yabai",
+            "/usr/local/bin/yabai",
+            "yabai"  # fallback to PATH
+        ]
+        
+        yabai_cmd = None
+        for path in yabai_paths:
+            if os.path.exists(path) or path == "yabai":
+                yabai_cmd = path
+                break
+        
+        if not yabai_cmd:
+            print("[Pager] yabai not found in common locations")
+            return None
+            
         try:
             result = subprocess.run(
-                ["yabai", "-m", "query", "--spaces", "--space"],
+                [yabai_cmd, "-m", "query", "--spaces", "--space"],
                 capture_output=True, text=True, check=True, timeout=2
             )
             data = json.loads(result.stdout)
-            return data.get("index")
+            current_space = data.get("index")
+            print(f"[Pager] yabai reports current space: {current_space}")
+            return current_space
         except FileNotFoundError:
-            print("[Pager] yabai is not installed or not in PATH.")
+            print(f"[Pager] yabai command not found: {yabai_cmd}")
             return None
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
             print(f"[Pager] Error with yabai: {e}")
@@ -461,10 +482,29 @@ class OverlayMenuBar:
         """Use yabai to unminimize and focus the WhatsApp Web window if it exists."""
         import subprocess
         import json
+        import os
+        
+        # Try different possible paths for yabai
+        yabai_paths = [
+            "/opt/homebrew/bin/yabai",
+            "/usr/local/bin/yabai",
+            "yabai"  # fallback to PATH
+        ]
+        
+        yabai_cmd = None
+        for path in yabai_paths:
+            if os.path.exists(path) or path == "yabai":
+                yabai_cmd = path
+                break
+        
+        if not yabai_cmd:
+            print("[WhatsApp/yabai] yabai not found in common locations")
+            return
+            
         try:
             # Query all windows
             result = subprocess.run(
-                ["yabai", "-m", "query", "--windows"],
+                [yabai_cmd, "-m", "query", "--windows"],
                 capture_output=True, text=True, check=True
             )
             windows = json.loads(result.stdout)
@@ -475,9 +515,9 @@ class OverlayMenuBar:
                 return
             wa_id = wa_windows[0]["id"]
             # Unminimize (if minimized)
-            subprocess.run(["yabai", "-m", "window", str(wa_id), "--toggle", "min"])
+            subprocess.run([yabai_cmd, "-m", "window", str(wa_id), "--toggle", "min"])
             # Focus the window
-            subprocess.run(["yabai", "-m", "window", "--focus", str(wa_id)])
+            subprocess.run([yabai_cmd, "-m", "window", "--focus", str(wa_id)])
             print("[WhatsApp/yabai] WhatsApp Web window should now be visible and focused.")
         except Exception as e:
             print(f"[WhatsApp/yabai] Error: {e}")
@@ -486,9 +526,28 @@ class OverlayMenuBar:
         """Return True if WhatsApp Web window is minimized, False if not, None if not found."""
         import subprocess
         import json
+        import os
+        
+        # Try different possible paths for yabai
+        yabai_paths = [
+            "/opt/homebrew/bin/yabai",
+            "/usr/local/bin/yabai",
+            "yabai"  # fallback to PATH
+        ]
+        
+        yabai_cmd = None
+        for path in yabai_paths:
+            if os.path.exists(path) or path == "yabai":
+                yabai_cmd = path
+                break
+        
+        if not yabai_cmd:
+            print("[WhatsApp/yabai] yabai not found in common locations")
+            return None
+            
         try:
             result = subprocess.run(
-                ["yabai", "-m", "query", "--windows"],
+                [yabai_cmd, "-m", "query", "--windows"],
                 capture_output=True, text=True, check=True
             )
             windows = json.loads(result.stdout)
@@ -506,10 +565,29 @@ class OverlayMenuBar:
         """
         import subprocess
         import json
+        import os
+        
+        # Try different possible paths for yabai
+        yabai_paths = [
+            "/opt/homebrew/bin/yabai",
+            "/usr/local/bin/yabai",
+            "yabai"  # fallback to PATH
+        ]
+        
+        yabai_cmd = None
+        for path in yabai_paths:
+            if os.path.exists(path) or path == "yabai":
+                yabai_cmd = path
+                break
+        
+        if not yabai_cmd:
+            print("[WhatsApp/yabai] yabai not found in common locations")
+            return
+            
         try:
             # Query all windows
             result = subprocess.run(
-                ["yabai", "-m", "query", "--windows"],
+                [yabai_cmd, "-m", "query", "--windows"],
                 capture_output=True, text=True, check=True
             )
             windows = json.loads(result.stdout)
@@ -521,12 +599,12 @@ class OverlayMenuBar:
             is_minimized = wa_windows[0].get("minimized", 0) == 1
             if is_minimized:
                 # Unminimize and focus
-                subprocess.run(["yabai", "-m", "window", str(wa_id), "--toggle", "min"])
-                subprocess.run(["yabai", "-m", "window", "--focus", str(wa_id)])
+                subprocess.run([yabai_cmd, "-m", "window", str(wa_id), "--toggle", "min"])
+                subprocess.run([yabai_cmd, "-m", "window", "--focus", str(wa_id)])
                 print("[WhatsApp/yabai] WhatsApp Web window unminimized and focused.")
             else:
                 # Minimize
-                subprocess.run(["yabai", "-m", "window", str(wa_id), "--toggle", "min"])
+                subprocess.run([yabai_cmd, "-m", "window", str(wa_id), "--toggle", "min"])
                 print("[WhatsApp/yabai] WhatsApp Web window minimized.")
         except Exception as e:
             print(f"[WhatsApp/yabai] Error: {e}")
