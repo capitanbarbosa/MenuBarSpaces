@@ -14,6 +14,7 @@ except ImportError:
     keyboard = None  # Will show warning if not installed
 
 from desktop_switcher import DesktopSwitcher
+from left_buttons import GPTButton, WizlabsButton
 
 
 def check_accessibility_permissions():
@@ -208,10 +209,19 @@ class OverlayMenuBar:
         self.whatsapp_button = whatsapp_button
         self.window.contentView().addSubview_(whatsapp_button)
 
+        # Add GPT and Wizlabs buttons
+        gpt_button_width = 48
+        gpt_button_x = whatsapp_button_x + whatsapp_button_width + 8
+        self.gpt_button = GPTButton(self.window.contentView(), gpt_button_x, 1, gpt_button_width, menu_bar_height - 2)
+
+        wizlabs_button_width = 70
+        wizlabs_button_x = gpt_button_x + gpt_button_width + 8
+        self.wizlabs_button = WizlabsButton(self.window.contentView(), wizlabs_button_x, 1, wizlabs_button_width, menu_bar_height - 2)
+
         # Create individual workspace buttons directly in the menu bar (section style)
         workspace_button_width = 64  # Wider for section look
         workspace_button_height = menu_bar_height - 2
-        workspace_start_x = whatsapp_button_x + whatsapp_button_width + 8
+        workspace_start_x = wizlabs_button_x + wizlabs_button_width + 8
         section_gap = 0  # No gap for section/segmented look
         
         self.desktop_switcher = DesktopSwitcher(self.window.contentView(), workspace_start_x, menu_bar_height)
