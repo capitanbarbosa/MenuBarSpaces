@@ -15,6 +15,7 @@ except ImportError:
 
 from desktop_switcher import DesktopSwitcher
 from left_buttons import GPTButton, WizlabsButton, WhatsAppButton, GmailButton
+from right_buttons import RightButtons
 
 
 def check_accessibility_permissions():
@@ -145,6 +146,22 @@ class OverlayMenuBar:
 
         # --- End Left Buttons Section ---
 
+        # --- Right Buttons Section ---
+        right_container_width = 250 
+        right_container_height = menu_bar_height - 2
+        right_container_x = self.window.frame().size.width - right_container_width - 40
+        right_container_y = 1
+        
+        self.right_buttons_container = NSView.alloc().initWithFrame_(NSMakeRect(right_container_x, right_container_y, right_container_width, right_container_height))
+        self.right_buttons_container.setWantsLayer_(True)
+        self.right_buttons_container.layer().setBackgroundColor_(container_bg.CGColor()) # Same as left
+        self.right_buttons_container.layer().setCornerRadius_(0)
+        self.window.contentView().addSubview_(self.right_buttons_container)
+        
+        self.right_buttons = RightButtons(self.right_buttons_container, 0, 0, right_container_width, right_container_height)
+        
+        # --- End Right Buttons Section ---
+
         # Create a placeholder panel (hidden by default)
         panel_width = 300
         panel_height = 400
@@ -251,6 +268,11 @@ class OverlayMenuBar:
         close_button.setAction_("slideOutAndHide:")
         self.window.contentView().addSubview_(close_button)
         self.close_button = close_button
+
+        # Adjust close button position to be at the very end of the bar
+        close_button_frame = close_button.frame()
+        close_button_frame.origin.x = self.window.frame().size.width - close_button_frame.size.width - 4
+        close_button.setFrame_(close_button_frame)
 
         self.window.orderFrontRegardless()
         self.hotkey_listener_thread = None

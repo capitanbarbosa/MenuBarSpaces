@@ -33,7 +33,7 @@ class WizlabsButton:
         self.button = NSButton.alloc().initWithFrame_(
             NSMakeRect(x, y, width, height)
         )
-        self.button.setTitle_("Wizlabs")
+        self.button.setTitle_("wizlabs")
         self.button.setBezelStyle_(0)
         self.button.setBordered_(False)
         self.button.setWantsLayer_(True)
@@ -43,7 +43,7 @@ class WizlabsButton:
         self.button.setButtonType_(0)
 
         attr_title = NSAttributedString.alloc().initWithString_attributes_(
-            "Wizlabs",
+            "wizlabs",
             NSDictionary.dictionaryWithObject_forKey_(
                 NSColor.whiteColor(), NSForegroundColorAttributeName
             )

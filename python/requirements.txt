@@ -1,2 +1,3 @@
 pyobjc
 pynput
+psutil
