@@ -1,77 +1,61 @@
+import os
 import webbrowser
 import subprocess
-from Cocoa import NSButton, NSMakeRect, NSColor, NSAttributedString, NSDictionary, NSForegroundColorAttributeName, NSImage, NSSize
+from Cocoa import NSStatusBar, NSVariableStatusItemLength, NSImage, NSSize
+
+_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _icon(filename, width, height):
+    path = os.path.join(_DIR, filename)
+    icon = NSImage.alloc().initWithContentsOfFile_(path)
+    if icon:
+        icon.setSize_(NSSize(width, height))
+        icon.setTemplate_(False)
+    return icon
+
 
 class GPTButton:
-    def __init__(self, parent_view, x, y, width, height):
-        self.button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(x, y, width, height)
+    def __init__(self):
+        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(
+            NSVariableStatusItemLength
         )
-        self.button.setTitle_("GPT")
-        self.button.setBezelStyle_(0)
-        self.button.setBordered_(False)
-        self.button.setWantsLayer_(True)
-        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
-        self.button.setAction_("openGPT:")
-        self.button.setTarget_(self)
-        self.button.setButtonType_(0)
-
-        attr_title = NSAttributedString.alloc().initWithString_attributes_(
-            "GPT",
-            NSDictionary.dictionaryWithObject_forKey_(
-                NSColor.whiteColor(), NSForegroundColorAttributeName
-            )
-        )
-        self.button.setAttributedTitle_(attr_title)
-        parent_view.addSubview_(self.button)
+        self.status_item.button().setTitle_("GPT")
+        self.status_item.button().setToolTip_("Open ChatGPT")
+        self.status_item.button().setTarget_(self)
+        self.status_item.button().setAction_("openGPT:")
 
     def openGPT_(self, sender):
         webbrowser.open("https://chat.openai.com")
 
-class WizlabsButton:
-    def __init__(self, parent_view, x, y, width, height):
-        self.button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(x, y, width, height)
-        )
-        self.button.setTitle_("wizlabs")
-        self.button.setBezelStyle_(0)
-        self.button.setBordered_(False)
-        self.button.setWantsLayer_(True)
-        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
-        self.button.setAction_("openWizlabs:")
-        self.button.setTarget_(self)
-        self.button.setButtonType_(0)
 
-        attr_title = NSAttributedString.alloc().initWithString_attributes_(
-            "wizlabs",
-            NSDictionary.dictionaryWithObject_forKey_(
-                NSColor.whiteColor(), NSForegroundColorAttributeName
-            )
+class WizlabsButton:
+    def __init__(self):
+        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(
+            NSVariableStatusItemLength
         )
-        self.button.setAttributedTitle_(attr_title)
-        parent_view.addSubview_(self.button)
+        self.status_item.button().setTitle_("wizlabs")
+        self.status_item.button().setToolTip_("Open wizlabs.co")
+        self.status_item.button().setTarget_(self)
+        self.status_item.button().setAction_("openWizlabs:")
 
     def openWizlabs_(self, sender):
         webbrowser.open("https://wizlabs.co")
 
+
 class WhatsAppButton:
-    def __init__(self, parent_view, x, y, width, height):
-        self.button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(x, y, width, height)
+    def __init__(self):
+        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(
+            NSVariableStatusItemLength
         )
-        self.button.setBezelStyle_(0)
-        self.button.setBordered_(False)
-        self.button.setWantsLayer_(True)
-        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
-        self.button.setAction_("toggleWhatsApp:")
-        self.button.setTarget_(self)
-        
-        icon = NSImage.alloc().initWithContentsOfFile_("whatsapp.png")
+        icon = _icon("whatsapp.png", 18, 18)
         if icon:
-            icon.setSize_(NSSize(27, 20))
-            self.button.setImage_(icon)
-            
-        parent_view.addSubview_(self.button)
+            self.status_item.button().setImage_(icon)
+        else:
+            self.status_item.button().setTitle_("WA")
+        self.status_item.button().setToolTip_("Open WhatsApp")
+        self.status_item.button().setTarget_(self)
+        self.status_item.button().setAction_("toggleWhatsApp:")
 
     def toggleWhatsApp_(self, sender):
         script_bring_to_front = '''
@@ -88,34 +72,35 @@ class WhatsAppButton:
         end tell
         '''
         try:
-            result = subprocess.run(['osascript', '-e', script_bring_to_front], capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                ["osascript", "-e", script_bring_to_front],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
             if result.stdout.strip() == "not running":
-                subprocess.run(['open', '-a', 'WhatsApp'], check=True)
+                subprocess.run(["open", "-a", "WhatsApp"], check=True)
         except Exception as e:
             print(f"Error in toggleWhatsApp: {e}")
             try:
-                subprocess.run(['open', '-a', 'WhatsApp'], check=True)
+                subprocess.run(["open", "-a", "WhatsApp"], check=True)
             except Exception as e_open:
                 print(f"Fallback launch of WhatsApp also failed: {e_open}")
 
-class GmailButton:
-    def __init__(self, parent_view, x, y, width, height):
-        self.button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(x, y, width, height)
-        )
-        self.button.setBezelStyle_(0)
-        self.button.setBordered_(False)
-        self.button.setWantsLayer_(True)
-        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
-        self.button.setAction_("openGmail:")
-        self.button.setTarget_(self)
-        
-        icon = NSImage.alloc().initWithContentsOfFile_("gmail.png")
-        if icon:
-            icon.setSize_(NSSize(20, 20))
-            self.button.setImage_(icon)
 
-        parent_view.addSubview_(self.button)
+class GmailButton:
+    def __init__(self):
+        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(
+            NSVariableStatusItemLength
+        )
+        icon = _icon("gmail.png", 18, 18)
+        if icon:
+            self.status_item.button().setImage_(icon)
+        else:
+            self.status_item.button().setTitle_("Gmail")
+        self.status_item.button().setToolTip_("Open Gmail")
+        self.status_item.button().setTarget_(self)
+        self.status_item.button().setAction_("openGmail:")
 
     def openGmail_(self, sender):
-        webbrowser.open("https://mail.google.com") 
+        webbrowser.open("https://mail.google.com")

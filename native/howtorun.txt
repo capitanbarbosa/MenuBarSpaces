@@ -1,0 +1,12 @@
+1. From this folder:
+   make run
+
+   Installs/updates ~/Applications/ActiveMenuBar.app and opens it.
+
+2. Desktop buttons 1–4 switch Spaces via macOS Space APIs (not keyboard
+   shortcuts), so Cursor/Terminal will not eat the clicks.
+
+3. Accessibility is no longer required for switching. Click Spaces to see
+   “Space API: ON” and the current desktop index.
+
+4. You need at least 4 Desktops in Mission Control (F3 → add Desktops).

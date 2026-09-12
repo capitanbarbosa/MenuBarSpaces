@@ -1,17 +1,25 @@
 import sys
 import threading
+
 try:
     from ApplicationServices import AXIsProcessTrustedWithOptions
 except ImportError:
     AXIsProcessTrustedWithOptions = None
-from Cocoa import NSApplication, NSWindow, NSWindowStyleMaskBorderless, NSBackingStoreBuffered, NSRect, NSScreen, NSColor, NSStatusWindowLevel, NSButton, NSPanel, NSView, NSMakeRect, NSFont, NSAttributedString, NSDictionary, NSForegroundColorAttributeName, NSStatusBar, NSVariableStatusItemLength, NSImage, NSAnimationContext
+
+from Cocoa import (
+    NSApplication,
+    NSApplicationActivationPolicyAccessory,
+    NSMenu,
+    NSMenuItem,
+    NSStatusBar,
+    NSVariableStatusItemLength,
+)
 from PyObjCTools import AppHelper
 
-# Add this import for global hotkey
 try:
     from pynput import keyboard
 except ImportError:
-    keyboard = None  # Will show warning if not installed
+    keyboard = None
 
 from desktop_switcher import DesktopSwitcher
 from left_buttons import GPTButton, WizlabsButton, WhatsAppButton, GmailButton
@@ -19,293 +27,93 @@ from right_buttons import RightButtons
 
 
 def check_accessibility_permissions():
-    """Checks for macOS accessibility permissions and provides guidance if not enabled."""
-    if sys.platform == 'darwin' and AXIsProcessTrustedWithOptions is not None:
+    if sys.platform == "darwin" and AXIsProcessTrustedWithOptions is not None:
         if not AXIsProcessTrustedWithOptions(None):
-            print("="*80)
-            print("!! PERMISSION REQUIRED FOR HOTKEYS !!")
-            print("This app needs permissions to listen for global hotkeys (like F9).")
-            print("Please grant 'Accessibility' and 'Input Monitoring' permissions to your terminal app.")
-            print("\nTo do so:")
-            print("1. Open System Settings > Privacy & Security > Accessibility")
-            print("2. Open System Settings > Privacy & Security > Input Monitoring")
-            print("\nIn both sections, click '+' and add your terminal application if it's not listed, then ensure the toggle is ON.")
-            print("The app running this script needs to be added (e.g., Terminal, iTerm2, or VSCode's/Cursor's terminal).")
-            print("You will likely need to restart the terminal or the script after granting permissions.")
-            print("="*80)
+            print("=" * 80)
+            print("!! PERMISSION REQUIRED FOR HOTKEYS / DESKTOP SWITCHING !!")
+            print("Grant Accessibility (and Input Monitoring for F9) to your terminal/Cursor.")
+            print("System Settings > Privacy & Security > Accessibility")
+            print("System Settings > Privacy & Security > Input Monitoring")
+            print("=" * 80)
             return False
     return True
 
 
-class OverlayMenuBar:
+class MenuBarApp:
+    """Native macOS menu bar extras (right side of the system menu bar)."""
+
     def __init__(self):
-        screen = NSScreen.mainScreen()
-        frame = screen.frame()
-        # Set height for your custom menu bar (reduced to 24 pixels for maximum compactness)
-        menu_bar_height = 24
-        left_margin = 120  # Adjust left margin for floating effect
-        rect = NSRect((left_margin, frame.size.height - menu_bar_height),
-                      (frame.size.width - left_margin, menu_bar_height))
+        # Keep strong refs so status items are not garbage-collected
+        self._keepers = []
 
-        self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-            rect,
-            NSWindowStyleMaskBorderless,
-            NSBackingStoreBuffered,
-            False
+        # Order of creation ≈ left→right among this app's items
+        self.menu_item = self._create_main_menu()
+        self.wizlabs_button = WizlabsButton()
+        self.gpt_button = GPTButton()
+        self.whatsapp_button = WhatsAppButton()
+        self.gmail_button = GmailButton()
+        self.desktop_switcher = DesktopSwitcher()
+        self.right_buttons = RightButtons()
+
+        self._keepers.extend(
+            [
+                self.menu_item,
+                self.wizlabs_button,
+                self.gpt_button,
+                self.whatsapp_button,
+                self.gmail_button,
+                self.desktop_switcher,
+                self.right_buttons,
+            ]
         )
-        self.window.setLevel_(NSStatusWindowLevel)
-        self.window.setOpaque_(False)
-        # Set a visible solid red background color (fully opaque)
-        self.window.setBackgroundColor_(
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.094, 0.094, 0.094, 1.0))  # #181818
-        self.window.setAlphaValue_(1.0)
 
-        # Make the window appear on all Spaces (Desktops) and stay visible in Exposé/Spaces
-        NSWindowCollectionBehaviorCanJoinAllSpaces = 1 << 0
-        NSWindowCollectionBehaviorStationary = 1 << 4
-        NSWindowCollectionBehaviorIgnoresCycle = 1 << 5
-        NSWindowCollectionBehaviorFullScreenAuxiliary = 1 << 8
-        behavior = (NSWindowCollectionBehaviorCanJoinAllSpaces |
-                    NSWindowCollectionBehaviorStationary |
-                    NSWindowCollectionBehaviorIgnoresCycle |
-                    NSWindowCollectionBehaviorFullScreenAuxiliary)
-        self.window.setCollectionBehavior_(behavior)
-
-        # Initialize simple workspace tracking 
-        # self.workspace_count = 6
-        # self.workspace_names = ["Log", "Dev", "Biz", "Media", "Chat", "Web"]
-        # self.current_workspace = 1  # We'll always start at desktop 1
-        # self.workspace_buttons = []
-        
-        # --- Left Buttons Section ---
-
-        # Define button sizes and spacing
-        hamburger_button_width = 48
-        wizlabs_button_width = 70
-        gpt_button_width = 48
-        whatsapp_button_width = 36
-        gmail_button_width = 36
-        button_spacing = 8
-        container_padding = 4
-
-        # Calculate container dimensions
-        all_buttons_width = (hamburger_button_width + wizlabs_button_width + gpt_button_width + 
-                             whatsapp_button_width + gmail_button_width)
-        total_spacing = button_spacing * 4
-        total_padding = container_padding * 2
-        container_width = all_buttons_width + total_spacing + total_padding
-        container_height = menu_bar_height - 2
-        container_x = 4  # Start container at the far left
-        container_y = 1
-
-        # Create the container view
-        self.left_buttons_container = NSView.alloc().initWithFrame_(NSMakeRect(container_x, container_y, container_width, container_height))
-        self.left_buttons_container.setWantsLayer_(True)
-        container_bg = NSColor.colorWithCalibratedRed_green_blue_alpha_(0.133, 0.133, 0.133, 1.0) # #222222
-        self.left_buttons_container.layer().setBackgroundColor_(container_bg.CGColor())
-        self.left_buttons_container.layer().setCornerRadius_(0)
-        self.window.contentView().addSubview_(self.left_buttons_container)
-        
-        # Add buttons to the container view
-        button_y_in_container = 0
-        button_height_in_container = container_height
-        current_x_in_container = container_padding
-
-        # Hamburger Menu Button (now inside the container)
-        self.button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(current_x_in_container, button_y_in_container, hamburger_button_width, button_height_in_container))
-        self.button.setTitle_("≡")
-        self.button.setBezelStyle_(0)
-        self.button.setBordered_(False)
-        self.button.setWantsLayer_(True)
-        self.button.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
-        attr_title = NSAttributedString.alloc().initWithString_attributes_(
-            "≡",
-            NSDictionary.dictionaryWithObject_forKey_(NSColor.whiteColor(), NSForegroundColorAttributeName)
-        )
-        self.button.setAttributedTitle_(attr_title)
-        self.button.setAction_("togglePanel:")
-        self.button.setTarget_(self)
-        self.left_buttons_container.addSubview_(self.button)
-        current_x_in_container += hamburger_button_width + button_spacing
-        
-        # Wizlabs Button
-        self.wizlabs_button = WizlabsButton(self.left_buttons_container, current_x_in_container, button_y_in_container, wizlabs_button_width, button_height_in_container)
-        current_x_in_container += wizlabs_button_width + button_spacing
-
-        # GPT Button
-        self.gpt_button = GPTButton(self.left_buttons_container, current_x_in_container, button_y_in_container, gpt_button_width, button_height_in_container)
-        current_x_in_container += gpt_button_width + button_spacing
-
-        # WhatsApp Button
-        self.whatsapp_button = WhatsAppButton(self.left_buttons_container, current_x_in_container, button_y_in_container, whatsapp_button_width, button_height_in_container)
-        current_x_in_container += whatsapp_button_width + button_spacing
-
-        # Gmail Button
-        self.gmail_button = GmailButton(self.left_buttons_container, current_x_in_container, button_y_in_container, gmail_button_width, button_height_in_container)
-
-        # --- End Left Buttons Section ---
-
-        # --- Right Buttons Section ---
-        right_container_width = 250 
-        right_container_height = menu_bar_height - 2
-        right_container_x = self.window.frame().size.width - right_container_width - 40
-        right_container_y = 1
-        
-        self.right_buttons_container = NSView.alloc().initWithFrame_(NSMakeRect(right_container_x, right_container_y, right_container_width, right_container_height))
-        self.right_buttons_container.setWantsLayer_(True)
-        self.right_buttons_container.layer().setBackgroundColor_(container_bg.CGColor()) # Same as left
-        self.right_buttons_container.layer().setCornerRadius_(0)
-        self.window.contentView().addSubview_(self.right_buttons_container)
-        
-        self.right_buttons = RightButtons(self.right_buttons_container, 0, 0, right_container_width, right_container_height)
-        
-        # --- End Right Buttons Section ---
-
-        # Create a placeholder panel (hidden by default)
-        panel_width = 300
-        panel_height = 400
-        panel_rect = NSMakeRect(
-            10, frame.size.height - menu_bar_height - panel_height, panel_width, panel_height)
-        self.panel = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
-            panel_rect,
-            NSWindowStyleMaskBorderless,
-            NSBackingStoreBuffered,
-            False
-        )
-        self.panel.setLevel_(NSStatusWindowLevel)
-        self.panel.setOpaque_(True)
-        # Use a dark background for the panel for better readability
-        self.panel.setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(
-            0.13, 0.15, 0.18, 1.0))  # dark gray
-        self.panel.setAlphaValue_(1.0)
-        self.panel.orderOut_(None)
-
-        # Add placeholder options to the panel with improved styling
-        option_titles = ["Launch App", "Settings", "About", "Quit"]
-        option_height = 40
-        button_bg_colors = [
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(
-                0.20, 0.60, 0.86, 1.0),  # blue
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(
-                0.18, 0.80, 0.44, 1.0),  # green
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(
-                0.95, 0.77, 0.06, 1.0),  # yellow
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(
-                0.91, 0.30, 0.24, 1.0),  # red
-        ]
-        text_colors = [
-            NSColor.whiteColor(),
-            NSColor.whiteColor(),
-            NSColor.blackColor(),
-            NSColor.whiteColor(),
-        ]
-        for idx, title in enumerate(option_titles):
-            opt_button = NSButton.alloc().initWithFrame_(NSMakeRect(20, panel_height -
-                                                                    (idx + 1) * (option_height + 10), panel_width - 40, option_height))
-            opt_button.setTitle_(title)
-            opt_button.setBezelStyle_(4)
-            opt_button.setTarget_(self)
-            opt_button.setAction_("panelOptionClicked:")
-            opt_button.setFont_(NSFont.boldSystemFontOfSize_(16))
-            opt_button.setWantsLayer_(True)
-            opt_button.layer().setBackgroundColor_(
-                button_bg_colors[idx].CGColor())
-            opt_button.layer().setCornerRadius_(8)
-            opt_button.setBordered_(False)
-            # Set button title color using attributed string
-            attr_title = NSAttributedString.alloc().initWithString_attributes_(
-                title,
-                NSDictionary.dictionaryWithObject_forKey_(
-                    text_colors[idx], NSForegroundColorAttributeName)
-            )
-            opt_button.setAttributedTitle_(attr_title)
-            self.panel.contentView().addSubview_(opt_button)
-
-        # Add a status bar item (menu bar icon)
-        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
-        # Set a simple icon (use a built-in or custom image)
-        status_icon = NSImage.imageNamed_("NSMenuOnStateTemplate")
-        if status_icon:
-            self.status_item.button().setImage_(status_icon)
-        else:
-            self.status_item.button().setTitle_("≡")
-        self.status_item.button().setTarget_(self)
-        self.status_item.button().setAction_("toggleOverlay:")
-
-        # Create individual workspace buttons directly in the menu bar (section style)
-        workspace_button_width = 64  # Wider for section look
-        workspace_button_height = menu_bar_height - 2
-        workspace_start_x = container_x + container_width + 8
-        section_gap = 0  # No gap for section/segmented look
-        
-        self.desktop_switcher = DesktopSwitcher(self.window.contentView(), workspace_start_x, menu_bar_height)
-
-        # Update workspace button appearances
-        # self.updateWorkspaceButtons()
-
-        # Add a right-edge toggle-off button to the overlay
-        close_button_width = 32
-        close_button_height = menu_bar_height - 4  # Reduced padding for maximum compactness
-        close_button_x = frame.size.width - close_button_width - 8 - left_margin
-        close_button_y = 1  # Minimal vertical padding
-        close_button = NSButton.alloc().initWithFrame_(
-            NSMakeRect(close_button_x, close_button_y, close_button_width, close_button_height))
-        close_button.setTitle_("→")
-        close_button.setBezelStyle_(4)
-        close_button.setButtonType_(0)
-        close_button.setBordered_(False)
-        close_button.setWantsLayer_(True)
-        close_button.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.18, 0.20, 0.24, 1.0).CGColor())
-        close_button.layer().setCornerRadius_(4)  # Minimal corner radius for maximum compactness
-        attr_close = NSAttributedString.alloc().initWithString_attributes_(
-            "→",
-            NSDictionary.dictionaryWithObject_forKey_(
-                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.902, 0.918, 0.941, 1.0), NSForegroundColorAttributeName)
-        )
-        close_button.setAttributedTitle_(attr_close)
-        close_button.setTarget_(self)
-        close_button.setAction_("slideOutAndHide:")
-        self.window.contentView().addSubview_(close_button)
-        self.close_button = close_button
-
-        # Adjust close button position to be at the very end of the bar
-        close_button_frame = close_button.frame()
-        close_button_frame.origin.x = self.window.frame().size.width - close_button_frame.size.width - 4
-        close_button.setFrame_(close_button_frame)
-
-        self.window.orderFrontRegardless()
         self.hotkey_listener_thread = None
         self.setup_hotkey_listener()
-        
-        # Reset to desktop 1 on startup and start monitoring
-        # self.resetToFirstDesktop()
-        # self.setup_workspace_monitor()
+        print("Menu bar items ready (right side of the system menu bar).")
+
+    def _create_main_menu(self):
+        item = NSStatusBar.systemStatusBar().statusItemWithLength_(
+            NSVariableStatusItemLength
+        )
+        item.button().setTitle_("≡")
+        item.button().setToolTip_("Active Top Menu")
+
+        menu = NSMenu.alloc().init()
+        for title, action in [
+            ("About", "aboutClicked:"),
+            ("Quit", "quitClicked:"),
+        ]:
+            mi = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                title, action, ""
+            )
+            mi.setTarget_(self)
+            menu.addItem_(mi)
+        item.setMenu_(menu)
+        return item
+
+    def aboutClicked_(self, sender):
+        print("Active Top Menu — native menu bar status items")
+
+    def quitClicked_(self, sender):
+        NSApplication.sharedApplication().terminate_(None)
 
     def setup_hotkey_listener(self):
         if not check_accessibility_permissions():
-            print("\n[Warning] Permissions not granted. The F9 hotkey will be disabled.")
+            print("\n[Warning] Permissions not granted. Shift highlight / hotkeys limited.")
             return
 
         if keyboard is None:
-            print("[Warning] pynput not installed. F9 hotkey will not work.")
+            print("[Warning] pynput not installed. Hotkeys disabled.")
             return
 
         self._shift_pressed = False
 
         def on_press(key):
             try:
-                if key == keyboard.Key.f9:
-                    # Toggle the whole overlay menu bar window
-                    if self.window.isVisible():
-                        self.window.orderOut_(None)
-                        # Also hide the panel if open
-                        self.panel.orderOut_(None)
-                    else:
-                        self.window.orderFrontRegardless()
-                elif key == keyboard.Key.shift and not self._shift_pressed:
+                if key == keyboard.Key.shift and not self._shift_pressed:
                     self._shift_pressed = True
                     from PyObjCTools.AppHelper import callAfter
+
                     callAfter(self.desktop_switcher.highlightWorkspaceButtonsBlue)
             except Exception as e:
                 print(f"Hotkey error: {e}")
@@ -315,6 +123,7 @@ class OverlayMenuBar:
                 if key == keyboard.Key.shift and self._shift_pressed:
                     self._shift_pressed = False
                     from PyObjCTools.AppHelper import callAfter
+
                     callAfter(self.desktop_switcher.unhighlightWorkspaceButtons)
             except Exception as e:
                 print(f"Hotkey error: {e}")
@@ -324,61 +133,9 @@ class OverlayMenuBar:
         t.start()
         self.hotkey_listener_thread = t
 
-    def togglePanel_(self, sender):
-        # Always position the panel below the button and toggle reliably
-        if self.panel.isVisible():
-            self.panel.orderOut_(None)
-        else:
-            window_frame = self.window.frame()
-            button_frame = self.button.frame()
-            panel_frame = self.panel.frame()
-            x = window_frame.origin.x + button_frame.origin.x
-            y = window_frame.origin.y - panel_frame.size.height
-            self.panel.setFrameOrigin_((x, y))
-            self.panel.orderFrontRegardless()
-
-    def toggleOverlay_(self, sender):
-        if self.window.isVisible():
-            self.slideOutAndHide_(None)
-        else:
-            self.slideInAndShow_()
-
-    def slideInAndShow_(self):
-        # Animate window fading in
-        self.window.setAlphaValue_(0.0)
-        self.window.orderFrontRegardless()
-        NSAnimationContext.beginGrouping()
-        NSAnimationContext.currentContext().setDuration_(0.2)
-        self.window.animator().setAlphaValue_(1.0)
-        NSAnimationContext.endGrouping()
-
-    def slideOutAndHide_(self, sender):
-        # Animate window fading out
-        NSAnimationContext.beginGrouping()
-        NSAnimationContext.currentContext().setDuration_(0.2)
-        
-        # Use a completion handler to safely hide the window after animation.
-        # This avoids potential crashes from `performSelector_withObject_afterDelay_`
-        # if the object gets garbage-collected.
-        def completion_handler():
-            self.window.orderOut_(None)
-
-        NSAnimationContext.currentContext().setCompletionHandler_(completion_handler)
-        
-        self.window.animator().setAlphaValue_(0.0)
-        NSAnimationContext.endGrouping()
-        
-        # Also hide panels
-        self.panel.orderOut_(None)
-
-    def panelOptionClicked_(self, sender):
-        # Placeholder: print which option was clicked
-        print(f"Clicked: {sender.title()}")
-        if sender.title() == "Quit":
-            NSApplication.sharedApplication().terminate_(None)
-
 
 if __name__ == "__main__":
     app = NSApplication.sharedApplication()
-    overlay = OverlayMenuBar()
+    app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+    controller = MenuBarApp()
     AppHelper.runEventLoop()
