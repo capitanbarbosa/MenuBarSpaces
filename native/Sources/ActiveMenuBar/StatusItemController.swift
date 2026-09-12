@@ -3,16 +3,18 @@ import SwiftUI
 
 final class StatusItemController {
     private var spacesItem: NSStatusItem?
-    private let popover: NSPopover
+    private let popover = NSPopover()
     private var desktopSwitcher: DesktopSwitcher?
+    private var hostingController: NSHostingController<PlaceholderPopoverView>?
 
     init() {
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 260, height: 160)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(
-            rootView: PlaceholderPopoverView()
-        )
+        popover.animates = true
+
+        let hosting = NSHostingController(rootView: PlaceholderPopoverView())
+        hosting.sizingOptions = [.intrinsicContentSize]
+        popover.contentViewController = hosting
+        hostingController = hosting
 
         // Status items stack right→left as created. Spaces first (rightmost),
         // then desktops created 4→1 so they read 1 2 3 4 left→right.
@@ -24,7 +26,7 @@ final class StatusItemController {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
             button.title = "Spaces"
-            button.toolTip = "Active Menu Bar (placeholder)"
+            button.toolTip = "Active Menu Bar"
             button.action = #selector(togglePopover(_:))
             button.target = self
         }
@@ -36,9 +38,15 @@ final class StatusItemController {
 
         if popover.isShown {
             popover.performClose(sender)
-        } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            return
         }
+
+        // Rebuild root view so status is current when opened.
+        let hosting = NSHostingController(rootView: PlaceholderPopoverView())
+        hosting.sizingOptions = [.intrinsicContentSize]
+        popover.contentViewController = hosting
+        hostingController = hosting
+
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 }

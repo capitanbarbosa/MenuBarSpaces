@@ -3,31 +3,37 @@ import ApplicationServices
 import SwiftUI
 
 struct PlaceholderPopoverView: View {
-    private var accessibilityOn: Bool { AXIsProcessTrusted() }
-    private var spaceAPI: Bool { SpaceBridge.isAvailable }
-    private var appPath: String { Bundle.main.bundlePath }
-    private var desktopIndex: String {
-        if let i = SpaceBridge.currentDesktopIndex() { return "\(i)" }
-        return "?"
-    }
+    @State private var accessibilityOn = false
+    @State private var spaceAPI = false
+    @State private var desktopIndex = "?"
+    @State private var appPath = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Active Menu Bar")
                 .font(.headline)
 
-            Text("Desktop: \(desktopIndex)  ·  Space API: \(spaceAPI ? "ON" : "OFF")")
+            Text("Desktop: \(desktopIndex)")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+
+            Text("Space API: \(spaceAPI ? "ON" : "OFF")")
+                .font(.subheadline)
+                .foregroundStyle(spaceAPI ? Color.primary : Color.red)
 
             Text(accessibilityOn ? "Accessibility: ON" : "Accessibility: OFF")
                 .font(.subheadline)
-                .foregroundStyle(accessibilityOn ? Color.secondary : Color.red)
+                .foregroundStyle(.secondary)
 
-            Text(appPath)
+            if !accessibilityOn {
+                Button("Enable Accessibility…") {
+                    requestAccessibility()
+                }
+            }
+
+            Text(appPath.isEmpty ? "…" : appPath)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+                .lineLimit(3)
 
             Divider()
 
@@ -37,6 +43,32 @@ struct PlaceholderPopoverView: View {
             .keyboardShortcut("q")
         }
         .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(width: 280, alignment: .leading)
+        .onAppear(perform: refreshStatus)
+    }
+
+    private func refreshStatus() {
+        accessibilityOn = AXIsProcessTrusted()
+        spaceAPI = SpaceBridge.isAvailable
+        desktopIndex = SpaceBridge.currentDesktopIndex().map(String.init) ?? "?"
+        appPath = Bundle.main.bundlePath
+    }
+
+    private func requestAccessibility() {
+        let options = [
+            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
+        ] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+
+        if let settingsURL = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        ) {
+            NSWorkspace.shared.open(settingsURL)
+        }
+
+        // TCC may take a moment to report a newly changed setting.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            refreshStatus()
+        }
     }
 }

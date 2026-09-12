@@ -17,14 +17,24 @@ package: build
 	codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(APP_DIR)/Contents/MacOS/$(APP_NAME)"
 	codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(APP_DIR)"
 
-# Install to ~/Applications so System Settings has a stable path to grant.
+# Install to ~/Applications. Only replace/resign when the binary actually changed,
+# so Accessibility TCC is less likely to go stale after every make run.
 install: package
 	mkdir -p "$(HOME)/Applications"
 	mkdir -p "$(INSTALL_APP)/Contents/MacOS"
-	cp "$(APP_DIR)/Contents/Info.plist" "$(INSTALL_APP)/Contents/Info.plist"
-	cp "$(APP_DIR)/Contents/MacOS/$(APP_NAME)" "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"
-	codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"
-	codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(INSTALL_APP)"
+	@src="$(APP_DIR)/Contents/MacOS/$(APP_NAME)"; \
+	dst="$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"; \
+	if [ -f "$$dst" ] && cmp -s "$$src" "$$dst"; then \
+		echo "Install up to date (binary unchanged) — keeping existing signature/TCC."; \
+		cp Info.plist "$(INSTALL_APP)/Contents/Info.plist"; \
+	else \
+		echo "Updating installed app binary…"; \
+		cp Info.plist "$(INSTALL_APP)/Contents/Info.plist"; \
+		cp "$$src" "$$dst"; \
+		codesign --force --sign - --identifier "$(BUNDLE_ID)" "$$dst"; \
+		codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(INSTALL_APP)"; \
+		echo "NOTE: binary changed — if Accessibility shows ON but popup says OFF, toggle it OFF/ON once."; \
+	fi
 
 run: install
 	pkill -x "$(APP_NAME)" || true
@@ -32,8 +42,7 @@ run: install
 	open "$(INSTALL_APP)"
 	@echo ""
 	@echo "Running: $(INSTALL_APP)"
-	@echo "Enable Accessibility for ActiveMenuBar, then click 2/3/4."
-	@echo "If you just toggled it on: Spaces → Quit, then make run again."
+	@echo "Space switching uses Space API. Accessibility is optional (key fallback)."
 
 open-accessibility:
 	open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
