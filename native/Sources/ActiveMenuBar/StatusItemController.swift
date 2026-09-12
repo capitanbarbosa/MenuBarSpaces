@@ -14,7 +14,8 @@ final class StatusItemController {
             rootView: PlaceholderPopoverView()
         )
 
-        // Creation order ≈ left→right among this app's status items
+        // Status items stack right→left as created. Spaces first (rightmost),
+        // then desktops created 4→1 so they read 1 2 3 4 left→right.
         installSpacesButton()
         desktopSwitcher = DesktopSwitcher()
     }

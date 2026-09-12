@@ -2,8 +2,7 @@ import AppKit
 import Darwin
 import Foundation
 
-/// Direct Mission Control / Spaces control via private SkyLight symbols.
-/// Avoids keyboard shortcuts (which Cursor/Terminal steal).
+/// Read/switch Mission Control Spaces via SkyLight + a Dock-friendly key fallback.
 enum SpaceBridge {
     typealias ConnectionID = Int32
     typealias SpaceID = UInt64
@@ -35,6 +34,9 @@ enum SpaceBridge {
     private static let hideSpaces: (@convention(c) (ConnectionID, CFArray) -> Void)? =
         symbol("SLSHideSpaces")
 
+    private static let getActiveSpace: (@convention(c) (ConnectionID) -> SpaceID)? =
+        symbol("SLSGetActiveSpace")
+
     static var isAvailable: Bool {
         handle != nil
             && mainConnectionID != nil
@@ -50,8 +52,7 @@ enum SpaceBridge {
 
     static func mainDisplaySpaces() -> DisplaySpaces? {
         guard let mainConnectionID,
-              let copyManagedDisplaySpaces,
-              let managedDisplayGetCurrentSpace
+              let copyManagedDisplaySpaces
         else { return nil }
 
         let cid = mainConnectionID()
@@ -61,18 +62,21 @@ enum SpaceBridge {
               let spaces = display["Spaces"] as? [[String: Any]]
         else { return nil }
 
-        // type 0 == user desktop (exclude fullscreen spaces)
+        // Mission Control order == Spaces array order (type 0 = user desktop).
         let spaceIDs: [SpaceID] = spaces.compactMap { (space: [String: Any]) -> SpaceID? in
             let type = space["type"] as? Int ?? 0
             guard type == 0 else { return nil }
-            if let id64 = space["id64"] as? UInt64 { return id64 }
-            if let id64 = space["id64"] as? Int { return SpaceID(id64) }
-            if let managed = space["ManagedSpaceID"] as? Int { return SpaceID(managed) }
-            if let managed = space["ManagedSpaceID"] as? Int64 { return SpaceID(managed) }
-            return nil
+            return spaceID(from: space)
         }
 
-        let current = managedDisplayGetCurrentSpace(cid, displayIdentifier as CFString)
+        let currentFromDict = (display["Current Space"] as? [String: Any]).flatMap(spaceID(from:))
+        let current = resolveCurrentSpaceID(
+            cid: cid,
+            displayIdentifier: displayIdentifier,
+            knownIDs: spaceIDs,
+            fallback: currentFromDict
+        )
+
         return DisplaySpaces(
             displayIdentifier: displayIdentifier,
             spaceIDs: spaceIDs,
@@ -80,38 +84,119 @@ enum SpaceBridge {
         )
     }
 
-    /// 1-based desktop index on the main display.
+    private static func spaceID(from space: [String: Any]) -> SpaceID? {
+        if let id64 = space["id64"] as? UInt64 { return id64 }
+        if let id64 = space["id64"] as? Int { return SpaceID(id64) }
+        if let managed = space["ManagedSpaceID"] as? Int { return SpaceID(managed) }
+        if let managed = space["ManagedSpaceID"] as? Int64 { return SpaceID(managed) }
+        return nil
+    }
+
+    private static func resolveCurrentSpaceID(
+        cid: ConnectionID,
+        displayIdentifier: String,
+        knownIDs: [SpaceID],
+        fallback: SpaceID?
+    ) -> SpaceID {
+        if let getActiveSpace {
+            let active = getActiveSpace(cid)
+            if knownIDs.contains(active) { return active }
+        }
+        if let managedDisplayGetCurrentSpace {
+            let viaUUID = managedDisplayGetCurrentSpace(cid, displayIdentifier as CFString)
+            if knownIDs.contains(viaUUID) { return viaUUID }
+            let viaMain = managedDisplayGetCurrentSpace(cid, "Main" as CFString)
+            if knownIDs.contains(viaMain) { return viaMain }
+        }
+        if let fallback, knownIDs.contains(fallback) { return fallback }
+        return knownIDs.first ?? 0
+    }
+
+    /// 1-based desktop index in Mission Control order.
     static func currentDesktopIndex() -> Int? {
         guard let info = mainDisplaySpaces(),
+              info.currentSpaceID != 0,
               let idx = info.spaceIDs.firstIndex(of: info.currentSpaceID)
         else { return nil }
         return idx + 1
     }
 
-    /// Focus 1-based desktop index on the main display.
+    /// Focus 1-based desktop index. Prefer Dock key transition; fall back to SkyLight.
     @discardableResult
     static func focusDesktop(index: Int) -> Bool {
         guard index >= 1,
-              let mainConnectionID,
-              let managedDisplaySetCurrentSpace,
               let info = mainDisplaySpaces(),
-              index <= info.spaceIDs.count
+              index <= info.spaceIDs.count,
+              let currentIndex = info.spaceIDs.firstIndex(of: info.currentSpaceID).map({ $0 + 1 })
+                ?? currentDesktopIndex()
         else { return false }
 
-        let target = info.spaceIDs[index - 1]
-        if target == info.currentSpaceID { return true }
+        if currentIndex == index { return true }
 
+        let targetID = info.spaceIDs[index - 1]
+        let currentID = info.spaceIDs[currentIndex - 1]
+
+        // 1) Relative Control+Arrow via Finder — real Mission Control transition.
+        if switchByRelativeKeys(from: currentIndex, to: index) {
+            Thread.sleep(forTimeInterval: 0.25)
+            if currentDesktopIndex() == index { return true }
+        }
+
+        // 2) SkyLight direct (show → hide → set), try UUID and "Main".
+        if switchBySkyLight(from: currentID, to: targetID, displayIdentifier: info.displayIdentifier)
+            || switchBySkyLight(from: currentID, to: targetID, displayIdentifier: "Main") {
+            Thread.sleep(forTimeInterval: 0.15)
+            return currentDesktopIndex() == index || getActiveSpaceID() == targetID
+        }
+
+        return false
+    }
+
+    private static func getActiveSpaceID() -> SpaceID? {
+        guard let mainConnectionID, let getActiveSpace else { return nil }
+        return getActiveSpace(mainConnectionID())
+    }
+
+    private static func switchBySkyLight(from: SpaceID, to: SpaceID, displayIdentifier: String) -> Bool {
+        guard let mainConnectionID, let managedDisplaySetCurrentSpace else { return false }
         let cid = mainConnectionID()
-        let display = info.displayIdentifier as CFString
 
-        if let hideSpaces {
-            hideSpaces(cid, [NSNumber(value: info.currentSpaceID)] as CFArray)
-        }
+        // yabai order: show destination, hide source, then set current
         if let showSpaces {
-            showSpaces(cid, [NSNumber(value: target)] as CFArray)
+            showSpaces(cid, [NSNumber(value: to)] as CFArray)
+        }
+        if let hideSpaces {
+            hideSpaces(cid, [NSNumber(value: from)] as CFArray)
         }
 
-        let rc = managedDisplaySetCurrentSpace(cid, display, target)
+        let rc = managedDisplaySetCurrentSpace(cid, displayIdentifier as CFString, to)
         return rc == 0
+    }
+
+    private static func switchByRelativeKeys(from: Int, to: Int) -> Bool {
+        let steps = to - from
+        guard steps != 0 else { return true }
+        let keyCode = steps > 0 ? 124 : 123 // right / left arrow
+        let count = abs(steps)
+
+        let source = """
+        tell application "Finder" to activate
+        delay 0.08
+        tell application "System Events"
+            repeat \(count) times
+                key code \(keyCode) using {control down}
+                delay 0.15
+            end repeat
+        end tell
+        """
+
+        var error: NSDictionary?
+        let script = NSAppleScript(source: source)
+        _ = script?.executeAndReturnError(&error)
+        if let error {
+            print("ActiveMenuBar: key switch error \(error)")
+            return false
+        }
+        return true
     }
 }
