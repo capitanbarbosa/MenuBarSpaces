@@ -4,6 +4,7 @@ import ApplicationServices
 /// Menu-bar desktop buttons 1…4. Highlight tracks Mission Control via space-change notifications.
 final class DesktopSwitcher {
     private let desktopCount = 4
+    private let desktopNames = ["Log", "dev", "biz", "kgp"]
     /// Keyed by desktop index (1…4). macOS places newer status items to the left,
     /// so we create 4→1 to get a left-to-right visual order of 1 2 3 4.
     private var statusItemsByDesktop: [Int: NSStatusItem] = [:]
@@ -30,8 +31,9 @@ final class DesktopSwitcher {
         for index in stride(from: desktopCount, through: 1, by: -1) {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             if let button = item.button {
-                button.title = "\(index)"
-                button.toolTip = "Switch to Desktop \(index)"
+                let name = desktopNames[index - 1]
+                button.title = name
+                button.toolTip = "Switch to \(name) (Desktop \(index))"
                 button.tag = index
                 button.target = self
                 button.action = #selector(desktopClicked(_:))
@@ -111,7 +113,8 @@ final class DesktopSwitcher {
             guard let button = statusItemsByDesktop[index]?.button else { continue }
 
             let isActive = index == currentDesktop
-            let title = isActive ? "[\(index)]" : "\(index)"
+            let name = desktopNames[index - 1]
+            let title = isActive ? "[\(name)]" : name
             let color: NSColor = isActive ? .labelColor : .secondaryLabelColor
 
             button.attributedTitle = NSAttributedString(
