@@ -1,40 +1,32 @@
-.PHONY: build package run clean open-accessibility doctor
+.PHONY: setup-signing build package install run clean open-accessibility doctor
 
 APP_NAME := ActiveMenuBar
 BUNDLE_ID := com.wiz.ActiveMenuBar
+SIGN_IDENTITY := ActiveMenuBar Local Development
 APP_DIR := $(APP_NAME).app
 INSTALL_APP := $(HOME)/Applications/$(APP_NAME).app
 BINARY := .build/release/$(APP_NAME)
 
+setup-signing:
+	./setup-signing.sh
+
 build:
 	swift build -c release
 
-# Update the local .app in place (do not rm -rf — that breaks Accessibility TCC).
-package: build
+# A persistent certificate gives every rebuild the same designated requirement.
+package: setup-signing build
 	mkdir -p "$(APP_DIR)/Contents/MacOS"
 	cp Info.plist "$(APP_DIR)/Contents/Info.plist"
 	cp "$(BINARY)" "$(APP_DIR)/Contents/MacOS/$(APP_NAME)"
-	codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(APP_DIR)/Contents/MacOS/$(APP_NAME)"
-	codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(APP_DIR)"
+	codesign --force --sign "$(SIGN_IDENTITY)" --identifier "$(BUNDLE_ID)" "$(APP_DIR)"
 
-# Install to ~/Applications. Only replace/resign when the binary actually changed,
-# so Accessibility TCC is less likely to go stale after every make run.
+# Install at a stable path and sign it with the same persistent identity.
 install: package
 	mkdir -p "$(HOME)/Applications"
 	mkdir -p "$(INSTALL_APP)/Contents/MacOS"
-	@src="$(APP_DIR)/Contents/MacOS/$(APP_NAME)"; \
-	dst="$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"; \
-	if [ -f "$$dst" ] && cmp -s "$$src" "$$dst"; then \
-		echo "Install up to date (binary unchanged) — keeping existing signature/TCC."; \
-		cp Info.plist "$(INSTALL_APP)/Contents/Info.plist"; \
-	else \
-		echo "Updating installed app binary…"; \
-		cp Info.plist "$(INSTALL_APP)/Contents/Info.plist"; \
-		cp "$$src" "$$dst"; \
-		codesign --force --sign - --identifier "$(BUNDLE_ID)" "$$dst"; \
-		codesign --force --sign - --identifier "$(BUNDLE_ID)" "$(INSTALL_APP)"; \
-		echo "NOTE: binary changed — if Accessibility shows ON but popup says OFF, toggle it OFF/ON once."; \
-	fi
+	cp Info.plist "$(INSTALL_APP)/Contents/Info.plist"
+	cp "$(BINARY)" "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"
+	codesign --force --sign "$(SIGN_IDENTITY)" --identifier "$(BUNDLE_ID)" "$(INSTALL_APP)"
 
 run: install
 	pkill -x "$(APP_NAME)" || true
@@ -51,6 +43,8 @@ doctor:
 	@echo "Installed app: $(INSTALL_APP)"
 	@ls -la "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)" 2>/dev/null || echo "(not installed yet — run make run)"
 	@echo "Bundle id: $(BUNDLE_ID)"
+	@echo "Expected signing identity: $(SIGN_IDENTITY)"
+	@codesign -d -r- "$(INSTALL_APP)" 2>&1 || true
 	@echo "To reset Accessibility for this app:"
 	@echo "  tccutil reset Accessibility $(BUNDLE_ID)"
 

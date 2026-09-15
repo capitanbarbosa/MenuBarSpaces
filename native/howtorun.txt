@@ -10,3 +10,8 @@
    “Space API: ON” and the current desktop index.
 
 4. You need at least 4 Desktops in Mission Control (F3 → add Desktops).
+
+5. Accessibility permission persists across rebuilds because make run signs
+   the app with the local "ActiveMenuBar Local Development" certificate.
+   On a new Mac, make run creates that certificate automatically. Grant
+   ActiveMenuBar Accessibility once after the certificate is first created.
