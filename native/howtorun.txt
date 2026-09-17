@@ -15,3 +15,9 @@
    the app with the local "ActiveMenuBar Local Development" certificate.
    On a new Mac, make run creates that certificate automatically. Grant
    ActiveMenuBar Accessibility once after the certificate is first created.
+
+6. Start automatically after macOS login:
+   make enable-login
+
+   Check:   make login-status
+   Disable: make disable-login

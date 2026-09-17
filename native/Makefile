@@ -1,4 +1,4 @@
-.PHONY: setup-signing build package install run clean open-accessibility doctor
+.PHONY: setup-signing build package install run enable-login disable-login login-status clean open-accessibility doctor
 
 APP_NAME := ActiveMenuBar
 BUNDLE_ID := com.wiz.ActiveMenuBar
@@ -35,6 +35,15 @@ run: install
 	@echo ""
 	@echo "Running: $(INSTALL_APP)"
 	@echo "Space switching uses Space API. Accessibility is optional (key fallback)."
+
+enable-login: install
+	./login-item.sh enable
+
+disable-login:
+	./login-item.sh disable
+
+login-status:
+	./login-item.sh status
 
 open-accessibility:
 	open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
