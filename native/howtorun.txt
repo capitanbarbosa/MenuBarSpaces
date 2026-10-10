@@ -21,3 +21,4 @@
 
    Check:   make login-status
    Disable: make disable-login
+   make enable-login   # turn on

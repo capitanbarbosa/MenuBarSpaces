@@ -4,6 +4,7 @@ import SwiftUI
 final class StatusItemController {
     private var spacesItem: NSStatusItem?
     private let popover = NSPopover()
+    private let nameStore = SpaceNameStore()
     private var desktopSwitcher: DesktopSwitcher?
     private var hostingController: NSHostingController<PlaceholderPopoverView>?
 
@@ -11,7 +12,7 @@ final class StatusItemController {
         popover.behavior = .transient
         popover.animates = true
 
-        let hosting = NSHostingController(rootView: PlaceholderPopoverView())
+        let hosting = NSHostingController(rootView: PlaceholderPopoverView(nameStore: nameStore))
         hosting.sizingOptions = [.intrinsicContentSize]
         popover.contentViewController = hosting
         hostingController = hosting
@@ -19,7 +20,7 @@ final class StatusItemController {
         // Status items stack right→left as created. Spaces first (rightmost),
         // then desktops created 4→1 so they read 1 2 3 4 left→right.
         installSpacesButton()
-        desktopSwitcher = DesktopSwitcher()
+        desktopSwitcher = DesktopSwitcher(nameStore: nameStore)
     }
 
     private func installSpacesButton() {
@@ -42,7 +43,7 @@ final class StatusItemController {
         }
 
         // Rebuild root view so status is current when opened.
-        let hosting = NSHostingController(rootView: PlaceholderPopoverView())
+        let hosting = NSHostingController(rootView: PlaceholderPopoverView(nameStore: nameStore))
         hosting.sizingOptions = [.intrinsicContentSize]
         popover.contentViewController = hosting
         hostingController = hosting

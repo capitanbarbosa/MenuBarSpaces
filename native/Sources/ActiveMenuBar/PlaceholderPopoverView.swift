@@ -3,6 +3,8 @@ import ApplicationServices
 import SwiftUI
 
 struct PlaceholderPopoverView: View {
+    @ObservedObject var nameStore: SpaceNameStore
+
     @State private var accessibilityOn = false
     @State private var spaceAPI = false
     @State private var desktopIndex = "?"
@@ -12,6 +14,33 @@ struct PlaceholderPopoverView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Active Menu Bar")
                 .font(.headline)
+
+            Text("Space names")
+                .font(.subheadline.bold())
+
+            ForEach(0..<SpaceNameStore.desktopCount, id: \.self) { index in
+                HStack {
+                    Text("\(index + 1)")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 16, alignment: .trailing)
+
+                    TextField(
+                        "Desktop \(index + 1)",
+                        text: Binding(
+                            get: { nameStore.names[index] },
+                            set: { nameStore.setName($0, for: index) }
+                        )
+                    )
+                    .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            Button("Reset names") {
+                nameStore.reset()
+            }
+            .controlSize(.small)
+
+            Divider()
 
             Text("Desktop: \(desktopIndex)")
                 .font(.subheadline)
@@ -43,7 +72,7 @@ struct PlaceholderPopoverView: View {
             .keyboardShortcut("q")
         }
         .padding(16)
-        .frame(width: 280, alignment: .leading)
+        .frame(width: 300, alignment: .leading)
         .onAppear(perform: refreshStatus)
     }
 
