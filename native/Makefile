@@ -1,4 +1,4 @@
-.PHONY: setup-signing build package install run enable-login disable-login login-status clean open-accessibility doctor
+.PHONY: setup-signing build package install run enable-login disable-login login-status release-status release-dmg notarize release clean open-accessibility doctor
 
 APP_NAME := ActiveMenuBar
 BUNDLE_ID := com.wiz.ActiveMenuBar
@@ -45,6 +45,18 @@ disable-login:
 login-status:
 	./login-item.sh status
 
+release-status:
+	./release.sh status
+
+release-dmg:
+	DEVELOPER_ID_APPLICATION="$(DEVELOPER_ID_APPLICATION)" ./release.sh build
+
+notarize:
+	NOTARY_PROFILE="$(NOTARY_PROFILE)" ./release.sh notarize
+
+release:
+	DEVELOPER_ID_APPLICATION="$(DEVELOPER_ID_APPLICATION)" NOTARY_PROFILE="$(NOTARY_PROFILE)" ./release.sh all
+
 open-accessibility:
 	open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 
@@ -59,5 +71,5 @@ doctor:
 
 clean:
 	swift package clean
-	rm -rf .build
+	rm -rf .build dist
 	# Keep ~/Applications install + local .app so TCC entry stays valid.

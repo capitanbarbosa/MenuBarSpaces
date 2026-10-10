@@ -20,4 +20,6 @@
 
    Check:   make login-status
    Disable: make disable-login
-   make enable-login   # turn on
+
+6. Developer ID DMG releases:
+   See RELEASING.md.
