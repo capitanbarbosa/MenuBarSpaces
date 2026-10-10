@@ -2,12 +2,13 @@ import AppKit
 import ApplicationServices
 import Combine
 
-/// Menu-bar desktop buttons 1…4. Highlight tracks Mission Control via space-change notifications.
+/// One menu-bar button per regular Desktop. Tracks Mission Control additions,
+/// removals, ordering, and active-space changes.
 final class DesktopSwitcher {
-    private let desktopCount = SpaceNameStore.desktopCount
     private let nameStore: SpaceNameStore
-    /// Keyed by desktop index (1…4). macOS places newer status items to the left,
-    /// so we create 4→1 to get a left-to-right visual order of 1 2 3 4.
+    private var desktopCount: Int { nameStore.names.count }
+    /// Keyed by desktop index. macOS places newer status items to the left, so
+    /// items are created in reverse for left-to-right Mission Control order.
     private var statusItemsByDesktop: [Int: NSStatusItem] = [:]
     private var currentDesktop = 1
     private var isSwitching = false
@@ -21,8 +22,13 @@ final class DesktopSwitcher {
         syncFromSystem()
         refreshButtonAppearance()
         startWatchingSpaceChanges()
-        nameObserver = nameStore.$names.sink { [weak self] _ in
-            self?.refreshButtonAppearance()
+        nameObserver = nameStore.$names.sink { [weak self] names in
+            guard let self else { return }
+            if self.statusItemsByDesktop.count != names.count {
+                self.rebuildButtons()
+            } else {
+                self.refreshButtonAppearance()
+            }
         }
     }
 
@@ -31,6 +37,7 @@ final class DesktopSwitcher {
             NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver)
         }
         pollTimer?.invalidate()
+        statusItemsByDesktop.values.forEach(NSStatusBar.system.removeStatusItem)
     }
 
     private func installButtons() {
@@ -48,6 +55,13 @@ final class DesktopSwitcher {
         }
     }
 
+    private func rebuildButtons() {
+        statusItemsByDesktop.values.forEach(NSStatusBar.system.removeStatusItem)
+        statusItemsByDesktop.removeAll()
+        installButtons()
+        refreshButtonAppearance()
+    }
+
     private func startWatchingSpaceChanges() {
         spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
@@ -61,9 +75,10 @@ final class DesktopSwitcher {
         // Backup: gestures / Mission Control don't always post promptly.
         pollTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
             guard let self, !self.isSwitching else { return }
-            let before = self.currentDesktop
+            let previousDesktop = self.currentDesktop
+            let previousCount = self.desktopCount
             self.syncFromSystem()
-            if self.currentDesktop != before {
+            if self.currentDesktop != previousDesktop || self.desktopCount != previousCount {
                 self.refreshButtonAppearance()
             }
         }
@@ -74,7 +89,7 @@ final class DesktopSwitcher {
     }
 
     func switchToDesktop(_ target: Int) {
-        guard (1...desktopCount).contains(target) else { return }
+        guard target >= 1, target <= desktopCount else { return }
         guard !isSwitching else { return }
 
         syncFromSystem()
@@ -102,20 +117,21 @@ final class DesktopSwitcher {
     }
 
     private func syncFromSystem() {
+        let systemCount = SpaceBridge.desktopCount()
+        if systemCount > 0 {
+            nameStore.updateDesktopCount(systemCount)
+        }
+
         if let index = SpaceBridge.currentDesktopIndex() {
-            // Prefer live Mission Control count when >4 later; for now clamp to our buttons.
-            if (1...desktopCount).contains(index) {
+            if index >= 1, index <= desktopCount {
                 currentDesktop = index
-            } else if index > desktopCount {
-                // More than 4 spaces: highlight none of 1…4 as "current" by leaving last,
-                // or pin to 4 if we're past it.
-                currentDesktop = min(index, desktopCount)
             }
         }
     }
 
     private func refreshButtonAppearance() {
-        for index in 1...desktopCount {
+        for offset in nameStore.names.indices {
+            let index = offset + 1
             guard let button = statusItemsByDesktop[index]?.button else { continue }
 
             let isActive = index == currentDesktop

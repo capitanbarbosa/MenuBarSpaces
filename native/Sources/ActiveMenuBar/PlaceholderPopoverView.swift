@@ -15,25 +15,30 @@ struct PlaceholderPopoverView: View {
             Text("Active Menu Bar")
                 .font(.headline)
 
-            Text("Space names")
+            Text("Space names (\(nameStore.names.count))")
                 .font(.subheadline.bold())
 
-            ForEach(0..<SpaceNameStore.desktopCount, id: \.self) { index in
-                HStack {
-                    Text("\(index + 1)")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 16, alignment: .trailing)
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(nameStore.names.indices, id: \.self) { index in
+                        HStack {
+                            Text("\(index + 1)")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 16, alignment: .trailing)
 
-                    TextField(
-                        "Desktop \(index + 1)",
-                        text: Binding(
-                            get: { nameStore.names[index] },
-                            set: { nameStore.setName($0, for: index) }
-                        )
-                    )
-                    .textFieldStyle(.roundedBorder)
+                            TextField(
+                                "Desktop \(index + 1)",
+                                text: Binding(
+                                    get: { nameStore.editableName(for: index) },
+                                    set: { nameStore.setName($0, for: index) }
+                                )
+                            )
+                            .textFieldStyle(.roundedBorder)
+                        }
+                    }
                 }
             }
+            .frame(height: renameListHeight)
 
             Button("Reset names") {
                 nameStore.reset()
@@ -81,6 +86,10 @@ struct PlaceholderPopoverView: View {
         spaceAPI = SpaceBridge.isAvailable
         desktopIndex = SpaceBridge.currentDesktopIndex().map(String.init) ?? "?"
         appPath = Bundle.main.bundlePath
+    }
+
+    private var renameListHeight: CGFloat {
+        CGFloat(min(max(nameStore.names.count, 1), 7)) * 30
     }
 
     private func requestAccessibility() {

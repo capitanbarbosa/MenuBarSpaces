@@ -4,7 +4,7 @@ import SwiftUI
 final class StatusItemController {
     private var spacesItem: NSStatusItem?
     private let popover = NSPopover()
-    private let nameStore = SpaceNameStore()
+    private let nameStore = SpaceNameStore(desktopCount: SpaceBridge.desktopCount())
     private var desktopSwitcher: DesktopSwitcher?
     private var hostingController: NSHostingController<PlaceholderPopoverView>?
 
@@ -17,8 +17,8 @@ final class StatusItemController {
         popover.contentViewController = hosting
         hostingController = hosting
 
-        // Status items stack right→left as created. Spaces first (rightmost),
-        // then desktops created 4→1 so they read 1 2 3 4 left→right.
+        // Status items stack right→left as created. Spaces stays rightmost;
+        // desktop items are created in reverse to read in Mission Control order.
         installSpacesButton()
         desktopSwitcher = DesktopSwitcher(nameStore: nameStore)
     }

@@ -121,6 +121,11 @@ enum SpaceBridge {
         return idx + 1
     }
 
+    /// Number of regular desktops on the main display (fullscreen spaces excluded).
+    static func desktopCount() -> Int {
+        mainDisplaySpaces()?.spaceIDs.count ?? 0
+    }
+
     /// Focus 1-based desktop index. Prefer Dock key transition; fall back to SkyLight.
     @discardableResult
     static func focusDesktop(index: Int) -> Bool {

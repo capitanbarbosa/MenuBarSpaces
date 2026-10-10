@@ -2,7 +2,6 @@ import Combine
 import Foundation
 
 final class SpaceNameStore: ObservableObject {
-    static let desktopCount = 4
     static let defaultNames = ["Log", "dev", "biz", "kgp"]
 
     @Published private(set) var names: [String]
@@ -10,15 +9,24 @@ final class SpaceNameStore: ObservableObject {
     private let defaults: UserDefaults
     private let defaultsKey = "desktopNames"
 
-    init(defaults: UserDefaults = .standard) {
+    init(desktopCount: Int, defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let count = max(desktopCount, 1)
+        let saved = defaults.stringArray(forKey: defaultsKey) ?? Self.defaultNames
+        names = Self.names(saved, adjustedTo: count)
+        defaults.set(names, forKey: defaultsKey)
+    }
 
-        if let saved = defaults.stringArray(forKey: defaultsKey),
-           saved.count == Self.desktopCount {
-            names = saved
-        } else {
-            names = Self.defaultNames
+    private static func defaultName(for index: Int) -> String {
+        defaultNames.indices.contains(index) ? defaultNames[index] : "\(index + 1)"
+    }
+
+    private static func names(_ existing: [String], adjustedTo count: Int) -> [String] {
+        var adjusted = Array(existing.prefix(count))
+        while adjusted.count < count {
+            adjusted.append(defaultName(for: adjusted.count))
         }
+        return adjusted
     }
 
     func name(for index: Int) -> String {
@@ -27,14 +35,27 @@ final class SpaceNameStore: ObservableObject {
         return name.isEmpty ? "\(index + 1)" : name
     }
 
+    /// Safe raw value for transient SwiftUI rows while the Spaces array shrinks.
+    func editableName(for index: Int) -> String {
+        guard names.indices.contains(index) else { return "" }
+        return names[index]
+    }
+
     func setName(_ name: String, for index: Int) {
         guard names.indices.contains(index) else { return }
         names[index] = String(name.prefix(20))
         defaults.set(names, forKey: defaultsKey)
     }
 
+    func updateDesktopCount(_ desktopCount: Int) {
+        let count = max(desktopCount, 1)
+        guard count != names.count else { return }
+        names = Self.names(names, adjustedTo: count)
+        defaults.set(names, forKey: defaultsKey)
+    }
+
     func reset() {
-        names = Self.defaultNames
+        names = Self.names([], adjustedTo: names.count)
         defaults.set(names, forKey: defaultsKey)
     }
 }
