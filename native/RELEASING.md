@@ -1,3 +1,5 @@
+# Direct Distribution
+
 # Developer ID distribution
 
 This produces a universal (`arm64` + `x86_64`), Hardened Runtime app inside a
@@ -33,6 +35,7 @@ The password is stored in Keychain and is not written into this repository.
 If exactly one Developer ID Application certificate is installed:
 
 ```sh
+cd native
 make release NOTARY_PROFILE="ActiveMenuBar-notary"
 ```
 
