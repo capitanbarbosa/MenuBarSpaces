@@ -3,4 +3,5 @@
 venv/
 node_modules/
 native/.build/
+native/MenuBarSpaces.app/
 native/ActiveMenuBar.app/

@@ -2,11 +2,11 @@
 
 Marketing and direct-download website for the native macOS Menu Bar Spaces app.
 
-The download buttons default to the latest `ActiveMenuBar-0.1.0.dmg` GitHub
+The download buttons default to the latest `MenuBarSpaces.zip` GitHub
 release. Override that destination at build time with:
 
 ```bash
-NEXT_PUBLIC_DOWNLOAD_URL="https://example.com/ActiveMenuBar.dmg" npm run build
+NEXT_PUBLIC_DOWNLOAD_URL="https://example.com/MenuBarSpaces.zip" npm run build
 ```
 
 ---

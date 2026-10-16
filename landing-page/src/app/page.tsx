@@ -3,11 +3,11 @@ import { MenuBarDemo } from "@/components/MenuBarDemo";
 import styles from "./page.module.css";
 
 const githubUrl =
-  "https://github.com/capitanbarbosa/Active-Top-menu-bar_mac";
+  "https://github.com/capitanbarbosa/MenuBarSpaces";
 
 const downloadUrl =
   process.env.NEXT_PUBLIC_DOWNLOAD_URL ??
-  `${githubUrl}/releases/latest/download/ActiveMenuBar-0.1.0.dmg`;
+  `${githubUrl}/releases/latest/download/MenuBarSpaces.zip`;
 
 const features = [
   {
