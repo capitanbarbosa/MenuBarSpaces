@@ -18,27 +18,8 @@ struct PlaceholderPopoverView: View {
             Text("Space names (\(nameStore.names.count))")
                 .font(.subheadline.bold())
 
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(nameStore.names.indices, id: \.self) { index in
-                        HStack {
-                            Text("\(index + 1)")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 16, alignment: .trailing)
-
-                            TextField(
-                                "Desktop \(index + 1)",
-                                text: Binding(
-                                    get: { nameStore.editableName(for: index) },
-                                    set: { nameStore.setName($0, for: index) }
-                                )
-                            )
-                            .textFieldStyle(.roundedBorder)
-                        }
-                    }
-                }
-            }
-            .frame(height: renameListHeight)
+            nameFields
+                .frame(maxHeight: nameStore.names.count > 7 ? renameListHeight : nil)
 
             Button("Reset names") {
                 nameStore.reset()
@@ -67,7 +48,9 @@ struct PlaceholderPopoverView: View {
             Text(appPath.isEmpty ? "…" : appPath)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .lineLimit(3)
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             Divider()
 
@@ -77,8 +60,40 @@ struct PlaceholderPopoverView: View {
             .keyboardShortcut("q")
         }
         .padding(16)
-        .frame(width: 300, alignment: .leading)
+        .frame(width: 320, alignment: .topLeading)
+        .fixedSize(horizontal: true, vertical: true)
         .onAppear(perform: refreshStatus)
+    }
+
+    @ViewBuilder
+    private var nameFields: some View {
+        let fields = VStack(spacing: 6) {
+            ForEach(nameStore.names.indices, id: \.self) { index in
+                HStack {
+                    Text("\(index + 1)")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 16, alignment: .trailing)
+
+                    TextField(
+                        "Desktop \(index + 1)",
+                        text: Binding(
+                            get: { nameStore.editableName(for: index) },
+                            set: { nameStore.setName($0, for: index) }
+                        )
+                    )
+                    .textFieldStyle(.roundedBorder)
+                }
+            }
+        }
+
+        if nameStore.names.count > 7 {
+            ScrollView {
+                fields
+            }
+            .frame(height: renameListHeight)
+        } else {
+            fields
+        }
     }
 
     private func refreshStatus() {

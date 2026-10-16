@@ -1,11 +1,12 @@
 .PHONY: setup-signing build package install run enable-login disable-login login-status release-status release-dmg notarize release clean open-accessibility doctor
 
-APP_NAME := ActiveMenuBar
+APP_NAME := MenuBarSpaces
 BUNDLE_ID := com.wiz.ActiveMenuBar
 SIGN_IDENTITY := ActiveMenuBar Local Development
 APP_DIR := $(APP_NAME).app
-INSTALL_APP := $(HOME)/Applications/$(APP_NAME).app
+INSTALL_APP := /Applications/$(APP_NAME).app
 BINARY := .build/release/$(APP_NAME)
+ICNS := .build/AppIcon.icns
 
 setup-signing:
 	./setup-signing.sh
@@ -13,19 +14,23 @@ setup-signing:
 build:
 	swift build -c release
 
+$(ICNS): AppIcon.png generate-icon.sh
+	./generate-icon.sh "$(ICNS)"
+
 # A persistent certificate gives every rebuild the same designated requirement.
-package: setup-signing build
-	mkdir -p "$(APP_DIR)/Contents/MacOS"
+package: setup-signing build $(ICNS)
+	mkdir -p "$(APP_DIR)/Contents/MacOS" "$(APP_DIR)/Contents/Resources"
 	cp Info.plist "$(APP_DIR)/Contents/Info.plist"
 	cp "$(BINARY)" "$(APP_DIR)/Contents/MacOS/$(APP_NAME)"
+	cp "$(ICNS)" "$(APP_DIR)/Contents/Resources/AppIcon.icns"
 	codesign --force --sign "$(SIGN_IDENTITY)" --identifier "$(BUNDLE_ID)" "$(APP_DIR)"
 
 # Install at a stable path and sign it with the same persistent identity.
 install: package
-	mkdir -p "$(HOME)/Applications"
-	mkdir -p "$(INSTALL_APP)/Contents/MacOS"
+	mkdir -p "$(INSTALL_APP)/Contents/MacOS" "$(INSTALL_APP)/Contents/Resources"
 	cp Info.plist "$(INSTALL_APP)/Contents/Info.plist"
 	cp "$(BINARY)" "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"
+	cp "$(ICNS)" "$(INSTALL_APP)/Contents/Resources/AppIcon.icns"
 	codesign --force --sign "$(SIGN_IDENTITY)" --identifier "$(BUNDLE_ID)" "$(INSTALL_APP)"
 
 run: install
@@ -72,4 +77,4 @@ doctor:
 clean:
 	swift package clean
 	rm -rf .build dist
-	# Keep ~/Applications install + local .app so TCC entry stays valid.
+	# Keep /Applications install + local .app so TCC entry stays valid.

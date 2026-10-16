@@ -2,13 +2,13 @@
 set -euo pipefail
 
 LABEL="com.wiz.ActiveMenuBar"
-APP_PATH="${HOME}/Applications/ActiveMenuBar.app"
+APP_PATH="/Applications/MenuBarSpaces.app"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 SERVICE="gui/$(id -u)/${LABEL}"
 
 enable_login() {
     if [[ ! -d "${APP_PATH}" ]]; then
-        echo "ActiveMenuBar is not installed at ${APP_PATH}."
+        echo "MenuBarSpaces is not installed at ${APP_PATH}."
         echo "Run 'make install' first."
         exit 1
     fi

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="ActiveMenuBar"
+APP_NAME="MenuBarSpaces"
 BUNDLE_ID="com.wiz.ActiveMenuBar"
 DIST_DIR="${ROOT}/dist"
 APP_PATH="${DIST_DIR}/${APP_NAME}.app"
@@ -85,7 +85,7 @@ build_release() {
 
     echo "Using signing identity: ${identity}"
     rm -rf "${DIST_DIR}"
-    mkdir -p "${APP_PATH}/Contents/MacOS"
+    mkdir -p "${APP_PATH}/Contents/MacOS" "${APP_PATH}/Contents/Resources"
 
     local arm_bin_dir x86_bin_dir
     arm_bin_dir="$(build_arch arm64)"
@@ -97,6 +97,7 @@ build_release() {
         -output "${APP_PATH}/Contents/MacOS/${APP_NAME}"
 
     cp "${ROOT}/Info.plist" "${APP_PATH}/Contents/Info.plist"
+    "${ROOT}/generate-icon.sh" "${APP_PATH}/Contents/Resources/AppIcon.icns"
 
     codesign \
         --force \

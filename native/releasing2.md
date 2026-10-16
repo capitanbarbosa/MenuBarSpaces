@@ -11,17 +11,17 @@ From this folder:
 make run
 ```
 
-That installs the app at `~/Applications/ActiveMenuBar.app`. Zip that app:
+That installs the app at `/Applications/MenuBarSpaces.app`. Zip that app:
 
 ```sh
-ditto -c -k --keepParent "$HOME/Applications/ActiveMenuBar.app" ActiveMenuBar.zip
+ditto -c -k --keepParent /Applications/MenuBarSpaces.app MenuBarSpaces.zip
 ```
 
-Attach `ActiveMenuBar.zip` to a GitHub Release, then point the landing-page
+Attach `MenuBarSpaces.zip` to a GitHub Release, then point the landing-page
 download button at that file:
 
 ```sh
-NEXT_PUBLIC_DOWNLOAD_URL="https://github.com/capitanbarbosa/Active-Top-menu-bar_mac/releases/latest/download/ActiveMenuBar.zip"
+NEXT_PUBLIC_DOWNLOAD_URL="https://github.com/capitanbarbosa/MenuBarSpaces/releases/latest/download/MenuBarSpaces.zip"
 ```
 
 ## What each recipient does once

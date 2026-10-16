@@ -22,7 +22,7 @@ drag-to-Applications DMG. It is for direct distribution, not the Mac App Store.
    credentials in Keychain:
 
    ```sh
-   xcrun notarytool store-credentials "ActiveMenuBar-notary" \
+   xcrun notarytool store-credentials "MenuBarSpaces-notary" \
      --apple-id "YOUR_APPLE_ID" \
      --team-id "YOUR_TEAM_ID" \
      --password "YOUR_APP_SPECIFIC_PASSWORD"
@@ -36,7 +36,7 @@ If exactly one Developer ID Application certificate is installed:
 
 ```sh
 cd native
-make release NOTARY_PROFILE="ActiveMenuBar-notary"
+make release NOTARY_PROFILE="MenuBarSpaces-notary"
 ```
 
 If multiple certificates are installed, specify the full identity:
@@ -44,22 +44,22 @@ If multiple certificates are installed, specify the full identity:
 ```sh
 make release \
   DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)" \
-  NOTARY_PROFILE="ActiveMenuBar-notary"
+  NOTARY_PROFILE="MenuBarSpaces-notary"
 ```
 
 The finished installer is:
 
 ```text
-dist/ActiveMenuBar-0.1.0.dmg
+dist/MenuBarSpaces-0.1.0.dmg
 ```
 
-Users open the DMG and drag `ActiveMenuBar.app` into Applications.
+Users open the DMG and drag `MenuBarSpaces.app` into Applications.
 
 ## Separate build/notarize commands
 
 ```sh
 make release-dmg DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)"
-make notarize NOTARY_PROFILE="ActiveMenuBar-notary"
+make notarize NOTARY_PROFILE="MenuBarSpaces-notary"
 ```
 
 The release script verifies the app signature, submits the DMG to Apple's

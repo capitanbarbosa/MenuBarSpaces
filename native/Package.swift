@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "ActiveMenuBar",
+    name: "MenuBarSpaces",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "ActiveMenuBar",
+            name: "MenuBarSpaces",
             path: "Sources/ActiveMenuBar"
         )
     ]

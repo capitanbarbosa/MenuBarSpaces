@@ -1,7 +1,7 @@
 1. From this folder:
    make run
 
-   Installs/updates ~/Applications/ActiveMenuBar.app and opens it.
+   Installs/updates /Applications/MenuBarSpaces.app and opens it.
 
 2. The app creates one menu-bar button for every regular Desktop reported by
    Mission Control. Buttons are added/removed automatically when that count
@@ -13,7 +13,7 @@
 4. Accessibility permission persists across rebuilds because make run signs
    the app with the local "ActiveMenuBar Local Development" certificate.
    On a new Mac, make run creates that certificate automatically. Grant
-   ActiveMenuBar Accessibility once after the certificate is first created.
+   MenuBarSpaces Accessibility once after the certificate is first created.
 
 5. Start automatically after macOS login:
    make enable-login

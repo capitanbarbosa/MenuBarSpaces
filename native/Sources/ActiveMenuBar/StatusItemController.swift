@@ -12,10 +12,7 @@ final class StatusItemController {
         popover.behavior = .transient
         popover.animates = true
 
-        let hosting = NSHostingController(rootView: PlaceholderPopoverView(nameStore: nameStore))
-        hosting.sizingOptions = [.intrinsicContentSize]
-        popover.contentViewController = hosting
-        hostingController = hosting
+        attachPopoverContent()
 
         // Status items stack right→left as created. Spaces stays rightmost;
         // desktop items are created in reverse to read in Mission Control order.
@@ -43,11 +40,36 @@ final class StatusItemController {
         }
 
         // Rebuild root view so status is current when opened.
+        attachPopoverContent()
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        syncPopoverSize()
+        DispatchQueue.main.async { [weak self] in
+            self?.syncPopoverSize()
+        }
+    }
+
+    private func attachPopoverContent() {
         let hosting = NSHostingController(rootView: PlaceholderPopoverView(nameStore: nameStore))
-        hosting.sizingOptions = [.intrinsicContentSize]
+        hosting.sizingOptions = [.preferredContentSize, .intrinsicContentSize]
         popover.contentViewController = hosting
         hostingController = hosting
+        syncPopoverSize()
+    }
 
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+    private func syncPopoverSize() {
+        guard let hosting = hostingController else { return }
+        hosting.view.layoutSubtreeIfNeeded()
+        var size = hosting.view.fittingSize
+        if size.width < 320 {
+            size.width = 320
+        }
+        if size.height < 280 {
+            size.height = hosting.view.intrinsicContentSize.height
+        }
+        if size.height < 280 || size.height == NSView.noIntrinsicMetric {
+            size.height = 420
+        }
+        hosting.preferredContentSize = size
+        popover.contentSize = size
     }
 }
