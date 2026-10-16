@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://activemenubar.app"),
-  title: "ActiveMenuBar — Your Mac Spaces, one click away",
+  title: "Menu Bar Spaces — Your Mac Spaces, one click away",
   description:
     "Name, see, and switch between your macOS Desktops directly from the menu bar.",
   keywords: [
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     "desktop switcher",
   ],
   openGraph: {
-    title: "ActiveMenuBar",
+    title: "Menu Bar Spaces",
     description: "Your Mac Spaces, one click away.",
     type: "website",
   },

@@ -48,6 +48,7 @@
   font-size: 15px;
   font-weight: 720;
   letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 
 .brandMark {
@@ -1425,6 +1426,11 @@
     height: 56px;
     padding-left: 14px;
     border-radius: 17px;
+  }
+
+  .brand {
+    font-size: 13px;
+    gap: 8px;
   }
 
   .navGithub {

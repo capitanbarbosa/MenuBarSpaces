@@ -1,6 +1,6 @@
-# ActiveMenuBar landing page
+# Menu Bar Spaces landing page
 
-Marketing and direct-download website for the native macOS ActiveMenuBar app.
+Marketing and direct-download website for the native macOS Menu Bar Spaces app.
 
 The download buttons default to the latest `ActiveMenuBar-0.1.0.dmg` GitHub
 release. Override that destination at build time with:

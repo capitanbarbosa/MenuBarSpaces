@@ -38,9 +38,9 @@ const features = [
 
 const faqs = [
   {
-    question: "Why is ActiveMenuBar distributed directly?",
+    question: "Why is Menu Bar Spaces distributed directly?",
     answer:
-      "Mission Control does not expose public APIs for switching and enumerating Spaces. Direct distribution lets ActiveMenuBar provide the feature it was built for while still being Developer ID signed and notarized by Apple.",
+      "Mission Control does not expose public APIs for switching and enumerating Spaces. Direct distribution lets Menu Bar Spaces provide the feature it was built for while still being Developer ID signed and notarized by Apple.",
   },
   {
     question: "Does it send any data anywhere?",
@@ -55,7 +55,7 @@ const faqs = [
   {
     question: "Will it launch when I sign in?",
     answer:
-      "Yes. Add ActiveMenuBar under System Settings → General → Login Items → Open at Login, and your Space controls will be ready with every Mac session.",
+      "Yes. Add Menu Bar Spaces under System Settings → General → Login Items → Open at Login, and your Space controls will be ready with every Mac session.",
   },
 ];
 
@@ -64,7 +64,7 @@ export default function Home() {
     <div className={styles.page}>
       <header className={styles.navWrap}>
         <nav className={styles.nav} aria-label="Main navigation">
-          <a className={styles.brand} href="#top" aria-label="ActiveMenuBar home">
+          <a className={styles.brand} href="#top" aria-label="Menu Bar Spaces home">
             <Image
               className={styles.brandMark}
               src="/logo.png"
@@ -72,7 +72,7 @@ export default function Home() {
               width={28}
               height={28}
             />
-            ActiveMenuBar
+            Menu Bar Spaces
           </a>
 
           <div className={styles.navLinks}>
@@ -166,7 +166,7 @@ export default function Home() {
             <span className={styles.sectionLabel}>Made for spatial thinkers</span>
             <h2>A tiny utility that keeps your whole workspace close.</h2>
             <p>
-              Your Desktops are already organized. ActiveMenuBar makes that
+              Your Desktops are already organized. Menu Bar Spaces makes that
               organization visible and instantly reachable.
             </p>
           </div>
@@ -271,13 +271,13 @@ export default function Home() {
                 </div>
               </div>
               <h3>Launch and name</h3>
-              <p>Open ActiveMenuBar, click Spaces, and make each Desktop yours.</p>
+              <p>Open Menu Bar Spaces, click Spaces, and make each Desktop yours.</p>
             </article>
           </div>
 
           <div className={styles.installCta}>
             <div>
-              <strong>ActiveMenuBar 0.1</strong>
+              <strong>Menu Bar Spaces 0.1</strong>
               <span>Universal binary · macOS 13 or newer</span>
             </div>
             <a className={styles.primaryButton} href={downloadUrl}>
@@ -295,7 +295,7 @@ export default function Home() {
             <span className={styles.sectionLabel}>Private by default</span>
             <h2>Your workspace stays on your Mac.</h2>
             <p>
-              ActiveMenuBar does one job locally. Names are stored in macOS
+              Menu Bar Spaces does one job locally. Names are stored in macOS
               preferences. There are no accounts, analytics SDKs, cloud sync,
               or data collection.
             </p>
@@ -337,7 +337,7 @@ export default function Home() {
           <span className={styles.sectionLabel}>Less switching. More doing.</span>
           <h2>Give every Space a name—and every click a destination.</h2>
           <a className={styles.lightButton} href={downloadUrl}>
-            Download ActiveMenuBar
+            Download Menu Bar Spaces
             <span>↓</span>
           </a>
           <p>macOS 13+ · Universal · Free</p>
@@ -353,7 +353,7 @@ export default function Home() {
             width={28}
             height={28}
           />
-          ActiveMenuBar
+          Menu Bar Spaces
         </a>
         <p>Built for people with more than one thing going on.</p>
         <div>
