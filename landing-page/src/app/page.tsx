@@ -38,9 +38,14 @@ const features = [
 
 const faqs = [
   {
+    question: "macOS says MenuBarSpaces was not opened. Is the download broken?",
+    answer:
+      "No. The GitHub zip is unsigned, so Gatekeeper shows “MenuBarSpaces” Not Opened with only Move to Trash and Done. Click Done, then go to System Settings → Privacy & Security, scroll to the bottom, and click Open Anyway. If that button is missing, Control-click the app in Finder and choose Open.",
+  },
+  {
     question: "Why is Menu Bar Spaces distributed directly?",
     answer:
-      "Mission Control does not expose public APIs for switching and enumerating Spaces. Direct distribution lets Menu Bar Spaces provide the feature it was built for while still being Developer ID signed and notarized by Apple.",
+      "Mission Control does not expose public APIs for switching and enumerating Spaces. The current download is an unsigned zip from GitHub Releases so you can try it without the Apple Developer Program. A Developer ID signed and notarized build is the path that removes the first-open warning.",
   },
   {
     question: "Does it send any data anywhere?",
@@ -237,9 +242,9 @@ export default function Home() {
               <h2>From download to flow in under a minute.</h2>
             </div>
             <div className={styles.trustBadge}>
-              <span>✓</span>
-              Developer ID signed
-              <small>Notarized by Apple</small>
+              <span>!</span>
+              First-open approval
+              <small>Unsigned GitHub zip</small>
             </div>
           </div>
 
@@ -249,21 +254,35 @@ export default function Home() {
               <div className={styles.stepGraphic}>
                 <div className={styles.dmgIcon}>↓</div>
               </div>
-              <h3>Download the DMG</h3>
-              <p>Get the latest notarized build directly from GitHub Releases.</p>
+              <h3>Download the zip</h3>
+              <p>Get the latest <code>MenuBarSpaces.zip</code> from GitHub Releases.</p>
             </article>
             <article>
               <span className={styles.stepNumber}>2</span>
               <div className={styles.stepGraphic}>
-                <div className={styles.dragApp}>AM</div>
+                <div className={styles.dragApp}>[ ]</div>
                 <span className={styles.dragArrow}>→</span>
                 <div className={styles.folderIcon}>A</div>
               </div>
-              <h3>Drag to Applications</h3>
-              <p>Install like any other Mac app. No package scripts or terminal.</p>
+              <h3>Move to Applications</h3>
+              <p>Unzip, then drag <code>MenuBarSpaces.app</code> into Applications.</p>
             </article>
             <article>
               <span className={styles.stepNumber}>3</span>
+              <div className={styles.stepGraphic}>
+                <div className={styles.settingsGraphic}>
+                  <span>Done</span>
+                  <span>Open Anyway</span>
+                </div>
+              </div>
+              <h3>Approve the first open</h3>
+              <p>
+                Double-click shows “Not Opened”. Click Done, then Open Anyway
+                in System Settings.
+              </p>
+            </article>
+            <article>
+              <span className={styles.stepNumber}>4</span>
               <div className={styles.stepGraphic}>
                 <div className={styles.launchGraphic}>
                   <span>[dev]</span>
@@ -275,13 +294,36 @@ export default function Home() {
             </article>
           </div>
 
+          <div className={styles.installNote}>
+            <strong>If macOS says “MenuBarSpaces” Not Opened</strong>
+            <ol>
+              <li>Click <b>Done</b>. Do not move it to Trash.</li>
+              <li>
+                Open <b>System Settings → Privacy &amp; Security</b> and scroll
+                to the bottom.
+              </li>
+              <li>
+                Click <b>Open Anyway</b> next to MenuBarSpaces, then confirm{" "}
+                <b>Open</b>.
+              </li>
+              <li>
+                If Open Anyway is missing, Control-click the app in Finder and
+                choose <b>Open</b>, then <b>Open</b> again.
+              </li>
+            </ol>
+            <p>
+              Later launches from Applications work normally. Each new
+              downloaded version needs this once.
+            </p>
+          </div>
+
           <div className={styles.installCta}>
             <div>
               <strong>Menu Bar Spaces 0.1</strong>
-              <span>Universal binary · macOS 13 or newer</span>
+              <span>Unsigned zip · macOS 13 or newer</span>
             </div>
             <a className={styles.primaryButton} href={downloadUrl}>
-              Download .dmg
+              Download .zip
               <span aria-hidden="true">↓</span>
             </a>
           </div>

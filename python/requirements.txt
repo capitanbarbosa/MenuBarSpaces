@@ -1,3 +1,0 @@
-pyobjc
-pynput
-psutil
