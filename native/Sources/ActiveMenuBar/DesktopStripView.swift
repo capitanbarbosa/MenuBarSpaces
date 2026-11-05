@@ -12,6 +12,7 @@ final class DesktopStripView: NSView {
     private let inset: CGFloat = 8
     private var nameRects: [Int: NSRect] = [:]
     private var spacesRect: NSRect = .zero
+    private let spacesTitle = "[ ]"
 
     override var isFlipped: Bool { true }
     override var isOpaque: Bool { false }
@@ -38,7 +39,7 @@ final class DesktopStripView: NSView {
                 ]
             )
         }
-        "Spaces".draw(
+        spacesTitle.draw(
             in: spacesRect,
             withAttributes: [
                 .font: font,
@@ -71,7 +72,7 @@ final class DesktopStripView: NSView {
             x += width + spacing
         }
         x += 2
-        let spacesWidth = ceil(("Spaces" as NSString).size(withAttributes: [.font: font]).width)
+        let spacesWidth = ceil((spacesTitle as NSString).size(withAttributes: [.font: font]).width)
         spacesRect = NSRect(x: x, y: y, width: spacesWidth, height: 16)
     }
 }
