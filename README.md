@@ -28,12 +28,11 @@ needs this once.
 ## Run from source
 
 ```sh
-cd native
 make run
 ```
 
 That installs `/Applications/MenuBarSpaces.app` and opens it. Local rebuilds
 use a development certificate, so they do not hit the download warning.
 
-See `native/releasing2.md` to publish a new zip, and `native/RELEASING.md` for
+See `releasing2.md` to publish a new zip, and `RELEASING.md` for
 Developer ID notarization (the path that removes the first-open dialog).

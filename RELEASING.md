@@ -35,7 +35,6 @@ The password is stored in Keychain and is not written into this repository.
 If exactly one Developer ID Application certificate is installed:
 
 ```sh
-cd native
 make release NOTARY_PROFILE="MenuBarSpaces-notary"
 ```
 

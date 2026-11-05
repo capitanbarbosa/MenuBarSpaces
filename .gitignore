@@ -1,7 +1,8 @@
-# In python/.gitignore or the root .gitignore
+.DS_Store
+.build/
+*.app/
+dist/
+*.zip
 .venv/
 venv/
 node_modules/
-native/.build/
-native/MenuBarSpaces.app/
-native/ActiveMenuBar.app/
