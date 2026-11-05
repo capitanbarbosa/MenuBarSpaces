@@ -60,6 +60,8 @@ final class DesktopSwitcher {
             return
         }
 
+        currentDesktop = target
+        onChange?()
         isSwitching = true
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let ok = SpaceBridge.focusDesktop(index: target)

@@ -31,13 +31,18 @@ final class DesktopStripView: NSView {
             let active = desktop == currentDesktop
             let title = active ? "[\(name)]" : name
             guard let rect = nameRects[desktop] else { continue }
-            title.draw(
-                in: rect,
-                withAttributes: [
-                    .font: active ? activeFont : font,
-                    .foregroundColor: active ? NSColor.labelColor : NSColor.secondaryLabelColor,
-                ]
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: active ? activeFont : font,
+                .foregroundColor: active ? NSColor.labelColor : NSColor.secondaryLabelColor,
+            ]
+            let textSize = (title as NSString).size(withAttributes: attrs)
+            let drawRect = NSRect(
+                x: rect.minX + (rect.width - textSize.width) / 2,
+                y: rect.minY,
+                width: textSize.width,
+                height: rect.height
             )
+            title.draw(in: drawRect, withAttributes: attrs)
         }
         spacesTitle.draw(
             in: spacesRect,
@@ -59,15 +64,19 @@ final class DesktopStripView: NSView {
         }
     }
 
+    private func slotWidth(for name: String) -> CGFloat {
+        let plain = (name as NSString).size(withAttributes: [.font: font]).width
+        let active = ("[\(name)]" as NSString).size(withAttributes: [.font: activeFont]).width
+        return ceil(max(plain, active))
+    }
+
     private func layoutLabels(in bounds: NSRect) {
         nameRects.removeAll()
         var x = inset
         let y = max((bounds.height - 15) / 2, 2)
         for (index, name) in names.enumerated() {
             let desktop = index + 1
-            let title = desktop == currentDesktop ? "[\(name)]" : name
-            let usedFont = desktop == currentDesktop ? activeFont : font
-            let width = ceil((title as NSString).size(withAttributes: [.font: usedFont]).width)
+            let width = slotWidth(for: name)
             nameRects[desktop] = NSRect(x: x, y: y, width: width, height: 16)
             x += width + spacing
         }

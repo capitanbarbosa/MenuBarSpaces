@@ -141,17 +141,18 @@ enum SpaceBridge {
         let targetID = info.spaceIDs[index - 1]
         let currentID = info.spaceIDs[currentIndex - 1]
 
-        // 1) Relative Control+Arrow via Finder — real Mission Control transition.
+        // Control+Arrow via System Events — same Mission Control shortcut as
+        // before, but do not activate Finder (that raises Finder windows on
+        // the desktop you are leaving).
         if switchByRelativeKeys(from: currentIndex, to: index) {
             Thread.sleep(forTimeInterval: 0.25)
             if currentDesktopIndex() == index { return true }
         }
 
-        // 2) SkyLight direct (show → hide → set), try UUID and "Main".
         if switchBySkyLight(from: currentID, to: targetID, displayIdentifier: info.displayIdentifier)
             || switchBySkyLight(from: currentID, to: targetID, displayIdentifier: "Main") {
             Thread.sleep(forTimeInterval: 0.15)
-            return currentDesktopIndex() == index || getActiveSpaceID() == targetID
+            if currentDesktopIndex() == index { return true }
         }
 
         return false
@@ -185,12 +186,10 @@ enum SpaceBridge {
         let count = abs(steps)
 
         let source = """
-        tell application "Finder" to activate
-        delay 0.08
         tell application "System Events"
             repeat \(count) times
                 key code \(keyCode) using {control down}
-                delay 0.15
+                delay 0.12
             end repeat
         end tell
         """

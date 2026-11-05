@@ -13,6 +13,8 @@ final class StatusItemController: NSObject {
     private let strip = DesktopStripView(frame: NSRect(x: 0, y: 0, width: 160, height: 22))
     private var screenObserver: NSObjectProtocol?
     private var positionTimer: Timer?
+    private var suppressPositionUntil = Date.distantPast
+    private var lastStripSize: NSSize = .zero
 
     override init() {
         super.init()
@@ -21,6 +23,7 @@ final class StatusItemController: NSObject {
 
         desktopSwitcher = DesktopSwitcher(nameStore: nameStore)
         desktopSwitcher?.onChange = { [weak self] in
+            self?.suppressPositionUntil = Date().addingTimeInterval(0.8)
             self?.refreshStrip()
         }
         strip.onSelectDesktop = { [weak self] desktop in
@@ -76,6 +79,7 @@ final class StatusItemController: NSObject {
         panel.isReleasedWhenClosed = false
         panel.ignoresMouseEvents = false
         panel.becomesKeyOnlyIfNeeded = true
+        panel.animationBehavior = .none
         panel.contentView = strip
         self.panel = panel
         panel.orderFrontRegardless()
@@ -84,28 +88,33 @@ final class StatusItemController: NSObject {
     private func refreshStrip() {
         strip.names = nameStore.names.indices.map { nameStore.name(for: $0) }
         strip.currentDesktop = desktopSwitcher?.currentDesktop ?? 1
-        let size = strip.fittingSize()
-        strip.frame = NSRect(origin: .zero, size: size)
-        panel?.setContentSize(size)
         strip.needsDisplay = true
-        positionPanel()
-        panel?.orderFrontRegardless()
+
+        let size = strip.fittingSize()
+        let sizeChanged = abs(size.width - lastStripSize.width) > 0.5
+            || abs(size.height - lastStripSize.height) > 0.5
+        lastStripSize = size
+        if sizeChanged {
+            strip.frame = NSRect(origin: .zero, size: size)
+            panel?.setContentSize(size)
+            positionPanel()
+        }
     }
 
     private func positionPanel() {
+        guard Date() >= suppressPositionUntil else { return }
         guard let panel, let screen = NSScreen.main else { return }
         let frame = screen.frame
         let visible = screen.visibleFrame
         let menuBarHeight = max(frame.maxY - visible.maxY, 24)
         let size = panel.frame.size
-        let gap: CGFloat = 10
+        let gap: CGFloat = 8
         let leftmostExtra = leftmostForeignMenuBarX(on: screen) ?? (visible.maxX - 220)
         var x = leftmostExtra - size.width - gap
-        let minX = visible.midX + 36
-        if x < minX { x = minX }
+        x = min(max(x, visible.minX + 8), visible.maxX - size.width - 8)
         let y = frame.maxY - menuBarHeight + (menuBarHeight - size.height) / 2
         let next = NSRect(x: x, y: y, width: size.width, height: size.height)
-        if abs(panel.frame.origin.x - next.origin.x) > 1 || abs(panel.frame.origin.y - next.origin.y) > 1 {
+        if abs(panel.frame.origin.x - next.origin.x) > 12 || abs(panel.frame.origin.y - next.origin.y) > 2 {
             panel.setFrame(next, display: true)
         }
     }
@@ -122,7 +131,9 @@ final class StatusItemController: NSObject {
             let pid = window[kCGWindowOwnerPID as String] as? pid_t ?? 0
             if pid == ourPID { continue }
             let layer = window[kCGWindowLayer as String] as? Int ?? 0
-            guard layer == 24 || layer == 25 else { continue }
+            // 25 = status extras. 24 is the menu bar itself (app menus) — skip it
+            // or the strip is pulled over File/Edit/View.
+            guard layer == 25 else { continue }
             let owner = window[kCGWindowOwnerName as String] as? String ?? ""
             if owner == "Window Server" { continue }
             guard let bounds = window[kCGWindowBounds as String] as? [String: Any] else { continue }
@@ -132,9 +143,7 @@ final class StatusItemController: NSObject {
             let height = (bounds["Height"] as? CGFloat) ?? CGFloat((bounds["Height"] as? NSNumber)?.doubleValue ?? 0)
             guard height > 8, height < 44, width > 8, width < 400 else { continue }
             guard y < 48 else { continue }
-            let screenMinX = screen.frame.minX
-            let screenMaxX = screen.frame.maxX
-            guard x >= screenMinX, x < screenMaxX else { continue }
+            guard x > screen.frame.midX - 24 else { continue }
             leftmost = min(leftmost ?? x, x)
         }
         return leftmost
