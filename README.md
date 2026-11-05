@@ -2,7 +2,7 @@
 
 Name, see, and switch macOS Desktops from the menu bar horizontally.
 
-![Menu Bar Spaces desktop names in the menu bar](image.png)
+![Menu Bar Spaces desktop names in the menu bar](image4.png)
 
 ## Download
 
