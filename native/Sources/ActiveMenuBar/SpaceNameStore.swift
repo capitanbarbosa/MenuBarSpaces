@@ -55,7 +55,7 @@ final class SpaceNameStore: ObservableObject {
     }
 
     func reset() {
-        names = Self.names([], adjustedTo: names.count)
+        names = (0..<names.count).map { "\($0 + 1)" }
         defaults.set(names, forKey: defaultsKey)
     }
 }
