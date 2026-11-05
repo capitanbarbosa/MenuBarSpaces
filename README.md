@@ -2,6 +2,8 @@
 
 Name, see, and switch macOS Desktops from the menu bar.
 
+![Menu Bar Spaces desktop names in the menu bar](image.png)
+
 ## Download
 
 [MenuBarSpaces.zip](https://github.com/capitanbarbosa/MenuBarSpaces/releases/latest/download/MenuBarSpaces.zip) from the latest GitHub Release.
