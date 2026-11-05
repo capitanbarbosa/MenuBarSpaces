@@ -62,6 +62,7 @@ struct PlaceholderPopoverView: View {
         .padding(16)
         .frame(width: 320, alignment: .topLeading)
         .fixedSize(horizontal: true, vertical: true)
+        .ignoresSafeArea()
         .onAppear(perform: refreshStatus)
     }
 

@@ -35,6 +35,7 @@ install: package
 
 run: install
 	pkill -x "$(APP_NAME)" || true
+	pkill -x ActiveMenuBar || true
 	sleep 0.3
 	open "$(INSTALL_APP)"
 	@echo ""

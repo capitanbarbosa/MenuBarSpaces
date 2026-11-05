@@ -24,6 +24,10 @@
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSSupportsAutomaticTermination</key>
+    <false/>
+    <key>NSSupportsSuddenTermination</key>
+    <false/>
     <key>NSAppleEventsUsageDescription</key>
     <string>MenuBarSpaces needs Automation access to switch desktops.</string>
     <key>NSHumanReadableCopyright</key>
