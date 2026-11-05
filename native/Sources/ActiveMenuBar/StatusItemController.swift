@@ -12,6 +12,7 @@ final class StatusItemController: NSObject {
     private var desktopSwitcher: DesktopSwitcher?
     private let strip = DesktopStripView(frame: NSRect(x: 0, y: 0, width: 160, height: 22))
     private var screenObserver: NSObjectProtocol?
+    private var spaceObserver: NSObjectProtocol?
     private var suppressPositionUntil = Date.distantPast
     private var lastStripSize: NSSize = .zero
 
@@ -22,7 +23,6 @@ final class StatusItemController: NSObject {
 
         desktopSwitcher = DesktopSwitcher(nameStore: nameStore)
         desktopSwitcher?.onChange = { [weak self] in
-            self?.suppressPositionUntil = Date().addingTimeInterval(1.6)
             self?.refreshStrip()
         }
         strip.onSelectDesktop = { [weak self] desktop in
@@ -40,13 +40,23 @@ final class StatusItemController: NSObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.positionPanel()
+            self?.positionPanel(force: true)
+        }
+        spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.suppressPositionUntil = Date().addingTimeInterval(1.6)
         }
     }
 
     deinit {
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
+        }
+        if let spaceObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver)
         }
         panel?.orderOut(nil)
         panel = nil
@@ -91,26 +101,33 @@ final class StatusItemController: NSObject {
         lastStripSize = size
         if sizeChanged {
             strip.frame = NSRect(origin: .zero, size: size)
-            panel?.setContentSize(size)
-            positionPanel()
+            // Keep the right edge glued to the extras; shrinking in place
+            // would slide names left into the hole.
+            positionPanel(force: true, using: size)
         }
     }
 
-    private func positionPanel() {
-        guard Date() >= suppressPositionUntil else { return }
+    private func positionPanel(force: Bool = false, using sizeOverride: NSSize? = nil) {
+        if !force, Date() < suppressPositionUntil { return }
         guard let panel, let screen = NSScreen.main else { return }
         let frame = screen.frame
         let visible = screen.visibleFrame
         let menuBarHeight = max(frame.maxY - visible.maxY, 24)
-        let size = panel.frame.size
+        let size = sizeOverride ?? panel.frame.size
         let gap: CGFloat = 8
         let leftmostExtra = leftmostForeignMenuBarX(on: screen) ?? (visible.maxX - 220)
         var x = leftmostExtra - size.width - gap
         x = min(max(x, visible.minX + 8), visible.maxX - size.width - 8)
         let y = frame.maxY - menuBarHeight + (menuBarHeight - size.height) / 2
         let next = NSRect(x: x, y: y, width: size.width, height: size.height)
-        if abs(panel.frame.origin.x - next.origin.x) > 12 || abs(panel.frame.origin.y - next.origin.y) > 2 {
-            panel.setFrame(next, display: false)
+        if force
+            || abs(panel.frame.origin.x - next.origin.x) > 12
+            || abs(panel.frame.origin.y - next.origin.y) > 2
+            || abs(panel.frame.size.width - next.size.width) > 0.5 {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0
+                panel.setFrame(next, display: true)
+            }
         }
     }
 
