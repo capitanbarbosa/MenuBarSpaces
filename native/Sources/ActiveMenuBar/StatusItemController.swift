@@ -12,7 +12,6 @@ final class StatusItemController: NSObject {
     private var desktopSwitcher: DesktopSwitcher?
     private let strip = DesktopStripView(frame: NSRect(x: 0, y: 0, width: 160, height: 22))
     private var screenObserver: NSObjectProtocol?
-    private var positionTimer: Timer?
     private var suppressPositionUntil = Date.distantPast
     private var lastStripSize: NSSize = .zero
 
@@ -23,7 +22,7 @@ final class StatusItemController: NSObject {
 
         desktopSwitcher = DesktopSwitcher(nameStore: nameStore)
         desktopSwitcher?.onChange = { [weak self] in
-            self?.suppressPositionUntil = Date().addingTimeInterval(0.8)
+            self?.suppressPositionUntil = Date().addingTimeInterval(1.6)
             self?.refreshStrip()
         }
         strip.onSelectDesktop = { [weak self] desktop in
@@ -43,22 +42,18 @@ final class StatusItemController: NSObject {
         ) { [weak self] _ in
             self?.positionPanel()
         }
-        positionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.positionPanel()
-        }
     }
 
     deinit {
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }
-        positionTimer?.invalidate()
         panel?.orderOut(nil)
         panel = nil
     }
 
     private func installPanel() {
-        let panel = NSPanel(
+        let panel = StatusBarPanel(
             contentRect: NSRect(x: 0, y: 0, width: 160, height: 22),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -115,7 +110,7 @@ final class StatusItemController: NSObject {
         let y = frame.maxY - menuBarHeight + (menuBarHeight - size.height) / 2
         let next = NSRect(x: x, y: y, width: size.width, height: size.height)
         if abs(panel.frame.origin.x - next.origin.x) > 12 || abs(panel.frame.origin.y - next.origin.y) > 2 {
-            panel.setFrame(next, display: true)
+            panel.setFrame(next, display: false)
         }
     }
 
@@ -187,4 +182,11 @@ final class StatusItemController: NSObject {
         height += 10 + 32 + 10 + 1 + 10 + 21 + 16
         return ceil(height)
     }
+}
+
+/// Clicks must not make us the active app, or Control+Arrow is eaten here
+/// instead of switching desktops.
+private final class StatusBarPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
 }

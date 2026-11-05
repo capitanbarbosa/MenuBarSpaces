@@ -74,7 +74,6 @@ final class DesktopSwitcher {
                     print("ActiveMenuBar: now on desktop \(self.currentDesktop) (requested \(target))")
                 } else {
                     print("ActiveMenuBar: failed to reach desktop \(target); still \(self.currentDesktop)")
-                    NSSound.beep()
                 }
             }
         }

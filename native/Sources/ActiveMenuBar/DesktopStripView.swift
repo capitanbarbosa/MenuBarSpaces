@@ -16,6 +16,9 @@ final class DesktopStripView: NSView {
 
     override var isFlipped: Bool { true }
     override var isOpaque: Bool { false }
+    override var acceptsFirstResponder: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     func fittingSize() -> NSSize {
         layoutLabels(in: NSRect(x: 0, y: 0, width: 4_000, height: 22))

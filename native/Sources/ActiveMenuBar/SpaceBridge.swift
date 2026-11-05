@@ -2,7 +2,7 @@ import AppKit
 import Darwin
 import Foundation
 
-/// Read/switch Mission Control Spaces via SkyLight + a Dock-friendly key fallback.
+/// Read Mission Control Spaces via SkyLight; switch with Control+Arrow.
 enum SpaceBridge {
     typealias ConnectionID = Int32
     typealias SpaceID = UInt64
@@ -25,15 +25,6 @@ enum SpaceBridge {
     private static let managedDisplayGetCurrentSpace: (@convention(c) (ConnectionID, CFString) -> SpaceID)? =
         symbol("SLSManagedDisplayGetCurrentSpace")
 
-    private static let managedDisplaySetCurrentSpace: (@convention(c) (ConnectionID, CFString, SpaceID) -> Int32)? =
-        symbol("SLSManagedDisplaySetCurrentSpace")
-
-    private static let showSpaces: (@convention(c) (ConnectionID, CFArray) -> Void)? =
-        symbol("SLSShowSpaces")
-
-    private static let hideSpaces: (@convention(c) (ConnectionID, CFArray) -> Void)? =
-        symbol("SLSHideSpaces")
-
     private static let getActiveSpace: (@convention(c) (ConnectionID) -> SpaceID)? =
         symbol("SLSGetActiveSpace")
 
@@ -41,7 +32,6 @@ enum SpaceBridge {
         handle != nil
             && mainConnectionID != nil
             && copyManagedDisplaySpaces != nil
-            && managedDisplaySetCurrentSpace != nil
     }
 
     struct DisplaySpaces {
@@ -126,77 +116,61 @@ enum SpaceBridge {
         mainDisplaySpaces()?.spaceIDs.count ?? 0
     }
 
-    /// Focus 1-based desktop index. Prefer Dock key transition; fall back to SkyLight.
+    /// Focus 1-based desktop index with the real Mission Control shortcut.
+    /// Never write SkyLight spaces — SLSManagedDisplaySetCurrentSpace /
+    /// SLSShowSpaces composites two desktops (stacked File/Edit + mixed windows).
     @discardableResult
     static func focusDesktop(index: Int) -> Bool {
         guard index >= 1,
               let info = mainDisplaySpaces(),
-              index <= info.spaceIDs.count,
-              let currentIndex = info.spaceIDs.firstIndex(of: info.currentSpaceID).map({ $0 + 1 })
-                ?? currentDesktopIndex()
+              index <= info.spaceIDs.count
         else { return false }
 
+        let currentIndex = info.spaceIDs.firstIndex(of: info.currentSpaceID).map { $0 + 1 }
+            ?? currentDesktopIndex()
+        guard let currentIndex else { return false }
         if currentIndex == index { return true }
 
-        let targetID = info.spaceIDs[index - 1]
-        let currentID = info.spaceIDs[currentIndex - 1]
-
-        // Control+Arrow via System Events — same Mission Control shortcut as
-        // before, but do not activate Finder (that raises Finder windows on
-        // the desktop you are leaving).
-        if switchByRelativeKeys(from: currentIndex, to: index) {
-            Thread.sleep(forTimeInterval: 0.25)
-            if currentDesktopIndex() == index { return true }
-        }
-
-        if switchBySkyLight(from: currentID, to: targetID, displayIdentifier: info.displayIdentifier)
-            || switchBySkyLight(from: currentID, to: targetID, displayIdentifier: "Main") {
-            Thread.sleep(forTimeInterval: 0.15)
-            if currentDesktopIndex() == index { return true }
-        }
-
-        return false
-    }
-
-    private static func getActiveSpaceID() -> SpaceID? {
-        guard let mainConnectionID, let getActiveSpace else { return nil }
-        return getActiveSpace(mainConnectionID())
-    }
-
-    private static func switchBySkyLight(from: SpaceID, to: SpaceID, displayIdentifier: String) -> Bool {
-        guard let mainConnectionID, let managedDisplaySetCurrentSpace else { return false }
-        let cid = mainConnectionID()
-
-        // yabai order: show destination, hide source, then set current
-        if let showSpaces {
-            showSpaces(cid, [NSNumber(value: to)] as CFArray)
-        }
-        if let hideSpaces {
-            hideSpaces(cid, [NSNumber(value: from)] as CFArray)
-        }
-
-        let rc = managedDisplaySetCurrentSpace(cid, displayIdentifier as CFString, to)
-        return rc == 0
+        return switchByRelativeKeys(from: currentIndex, to: index)
     }
 
     private static func switchByRelativeKeys(from: Int, to: Int) -> Bool {
         let steps = to - from
         guard steps != 0 else { return true }
-        let keyCode = steps > 0 ? 124 : 123 // right / left arrow
+        let goingRight = steps > 0
         let count = abs(steps)
+        for i in 0..<count {
+            if i > 0 { Thread.sleep(forTimeInterval: 0.12) }
+            if !runOnMain({ sendSystemEventsArrow(goingRight: goingRight) }) {
+                return currentDesktopIndex() == to
+            }
+        }
+        return true
+    }
 
-        let source = """
+    private static func runOnMain<T>(_ body: () -> T) -> T {
+        if Thread.isMainThread { return body() }
+        return DispatchQueue.main.sync(execute: body)
+    }
+
+    // Compiled once — building NSAppleScript on every click added noticeable lag.
+    private static let leftArrowScript = NSAppleScript(source: """
         tell application "System Events"
-            repeat \(count) times
-                key code \(keyCode) using {control down}
-                delay 0.12
-            end repeat
+            key code 123 using {control down}
         end tell
-        """
+        """)
+    private static let rightArrowScript = NSAppleScript(source: """
+        tell application "System Events"
+            key code 124 using {control down}
+        end tell
+        """)
 
+    /// Mission Control “Move left/right a space”. Never activate Finder.
+    @discardableResult
+    private static func sendSystemEventsArrow(goingRight: Bool) -> Bool {
+        let script = goingRight ? rightArrowScript : leftArrowScript
         var error: NSDictionary?
-        let script = NSAppleScript(source: source)
-        _ = script?.executeAndReturnError(&error)
+        script?.executeAndReturnError(&error)
         if let error {
             print("ActiveMenuBar: key switch error \(error)")
             return false
